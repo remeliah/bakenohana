@@ -38,8 +38,8 @@ module Packets
         value = typed[0]
         typ = typed[1].as(OsuType)
 
-        case typ
-        when OsuType::Raw
+      case typ
+      when OsuType::Raw
         slice = case value
                 when String
                   value.to_slice
@@ -124,7 +124,8 @@ module Packets
     ret += Bytes[
       (length & 0xFF).to_u8,
       ((length >> 8) & 0xFF).to_u8,
-      ((length >> 16) & 0xFF).to_u8
+      ((length >> 16) & 0xFF).to_u8,
+      ((length >> 24) & 0xFF).to_u8
     ]
 
     ret += payload

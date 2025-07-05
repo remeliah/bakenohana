@@ -1,165 +1,168 @@
-class BanchoPacket
-  getter id : UInt16
-  getter body : Bytes
+require "../objects/player"
+require "./packets"
 
-  def initialize(@id : UInt16, @body : Bytes, @handler : Proc(Player, Bytes, Nil))
-  end
-
-  def handle(player : Player)
-    @handler.call(player, @body)
-  end
+enum ClientPackets : UInt16 # TODO: add more
+  LOGOUT = 2
+  PONG = 4
+  USER_STATS = 85
+  USER_PRESENCE_REQUEST = 97
+  USER_PRESENCE_REQUEST_ALL = 98
 end
 
-class BanchoPacketReader
-  include Enumerable(BanchoPacket)
-
-  @data : Bytes
-  @pos : Int32 = 0
-  @packet_map : Hash(UInt16, Proc(Player, Bytes, Nil))
-  @curr_len : Int32 = 0
-
-  def initialize(@data : Bytes, @packet_map : Hash(UInt16, Proc(Player, Bytes, Nil)))
+abstract class BasePacket
+  def initialize(@reader : BanchoPacketReader)
   end
 
-  def each
-    while @pos + 7 <= @data.size
-      # packet_id (2 bytes) + pad (1 byte) + length (4 bytes)
-      id = read_u16_direct
-      skip_bytes(1)
+  abstract def handle(p : Player)
+end
 
-      @curr_len = read_u32_direct.to_i
+# https://github.com/osuAkatsuki/bancho.py/blob/74290910d3ce6e0284453ad9f913ede6a8555fa2/app/packets.py#L303
+alias PacketMap = Hash(UInt16, BasePacket.class)
 
-      break if @pos + @curr_len > @data.size
+macro register(packet_id, packet_class) # TODO: handle for restricted?
+  PACKET_MAP[{{packet_id}}.to_u16] = {{packet_class}}
+end
 
-      if handler = @packet_map[id]?
-        body = read_bytes(@curr_len)
-        yield BanchoPacket.new(id, body, handler)
+PACKET_MAP = PacketMap.new
+
+class BanchoPacketReader
+  include Iterator(BasePacket)
+
+  @body_view : Bytes
+  @packet_map : PacketMap
+  @current_len : Int32 = 0
+
+  def initialize(body_view : Bytes, @packet_map : PacketMap)
+    @body_view = body_view
+  end
+
+  def next
+    while @body_view.size >= 7
+      p_type, p_len = read_header
+      
+      if packet_class = @packet_map[p_type]?
+        @current_len = p_len
+        return packet_class.new(self)
       else
-
-        skip_bytes(@curr_len)
+        # bye
+        if p_len != 0 && p_len <= @body_view.size
+          @body_view = @body_view[p_len..]
+        else
+          break
+        end
       end
     end
+    stop
   end
 
-  def read_bytes(n : Int32) : Bytes
-    raise IndexError.new("not enough data") if @pos + n > @data.size
-    buf = @data[@pos, n]
-    @pos += n
-    buf
+  private def read_header : {UInt16, Int32}
+    raise IndexError.new("not enough data for header") if @body_view.size < 7
+
+    packet_id = @body_view[0].to_u16 | (@body_view[1].to_u16 << 8)
+
+    packet_len = @body_view[3].to_u32 | 
+                (@body_view[4].to_u32 << 8) |
+                (@body_view[5].to_u32 << 16) |
+                (@body_view[6].to_u32 << 24)
+
+    @body_view = @body_view[7..]
+    {packet_id, packet_len.to_i}
   end
 
-  def skip_bytes(n : Int32)
-    raise IndexError.new("not enough data") if @pos + n > @data.size
-    @pos += n
-  end
-
-  private def read_u16_direct : UInt16
-    raise IndexError.new("not enough data") if @pos + 2 > @data.size
-    val = @data[@pos].to_u16 | (@data[@pos + 1].to_u16 << 8)
-    @pos += 2
-    val
-  end
-
-  private def read_u32_direct : UInt32
-    raise IndexError.new("not enough data") if @pos + 4 > @data.size
-    val = @data[@pos].to_u32 | 
-          (@data[@pos + 1].to_u32 << 8) |
-          (@data[@pos + 2].to_u32 << 16) |
-          (@data[@pos + 3].to_u32 << 24)
-    @pos += 4
+  def read_raw : Bytes
+    raise IndexError.new("not enough data") if @current_len > @body_view.size
+    val = @body_view[0, @current_len]
+    @body_view = @body_view[@current_len..]
     val
   end
 
   def read_i8 : Int8
-    raise IndexError.new("not enough data") if @pos + 1 > @data.size
-    val = @data[@pos]
-    @pos += 1
+    raise IndexError.new("not enough data") if @body_view.size < 1
+    val = @body_view[0]
+    @body_view = @body_view[1..]
     val > 127 ? (val - 256).to_i8 : val.to_i8
   end
 
   def read_u8 : UInt8
-    raise IndexError.new("not enough data") if @pos + 1 > @data.size
-    val = @data[@pos]
-    @pos += 1
+    raise IndexError.new("not enough data") if @body_view.size < 1
+    val = @body_view[0]
+    @body_view = @body_view[1..]
     val
   end
 
   def read_i16 : Int16
-    raise IndexError.new("not enough data") if @pos + 2 > @data.size
-    val = @data[@pos].to_i16 | (@data[@pos + 1].to_i16 << 8)
-    @pos += 2
-
+    raise IndexError.new("not enough data") if @body_view.size < 2
+    val = @body_view[0].to_i16 | (@body_view[1].to_i16 << 8)
+    @body_view = @body_view[2..]
     val > 32767 ? (val - 65536).to_i16 : val
   end
 
   def read_u16 : UInt16
-    raise IndexError.new("not enough data") if @pos + 2 > @data.size
-    val = @data[@pos].to_u16 | (@data[@pos + 1].to_u16 << 8)
-    @pos += 2
+    raise IndexError.new("not enough data") if @body_view.size < 2
+    val = @body_view[0].to_u16 | (@body_view[1].to_u16 << 8)
+    @body_view = @body_view[2..]
     val
   end
 
   def read_i32 : Int32
-    raise IndexError.new("not enough data") if @pos + 4 > @data.size
-    val = @data[@pos].to_i32 | 
-          (@data[@pos + 1].to_i32 << 8) |
-          (@data[@pos + 2].to_i32 << 16) |
-          (@data[@pos + 3].to_i32 << 24)
-    @pos += 4
+    raise IndexError.new("not enough data") if @body_view.size < 4
+    val = @body_view[0].to_i32 | 
+          (@body_view[1].to_i32 << 8) |
+          (@body_view[2].to_i32 << 16) |
+          (@body_view[3].to_i32 << 24)
+    @body_view = @body_view[4..]
     val
   end
 
   def read_u32 : UInt32
-    raise IndexError.new("not enough data") if @pos + 4 > @data.size
-    val = @data[@pos].to_u32 | 
-          (@data[@pos + 1].to_u32 << 8) |
-          (@data[@pos + 2].to_u32 << 16) |
-          (@data[@pos + 3].to_u32 << 24)
-    @pos += 4
+    raise IndexError.new("not enough data") if @body_view.size < 4
+    val = @body_view[0].to_u32 | 
+          (@body_view[1].to_u32 << 8) |
+          (@body_view[2].to_u32 << 16) |
+          (@body_view[3].to_u32 << 24)
+    @body_view = @body_view[4..]
     val
   end
 
   def read_i64 : Int64
-    raise IndexError.new("not enough data") if @pos + 8 > @data.size
-    val = @data[@pos].to_i64 | 
-          (@data[@pos + 1].to_i64 << 8) |
-          (@data[@pos + 2].to_i64 << 16) |
-          (@data[@pos + 3].to_i64 << 24) |
-          (@data[@pos + 4].to_i64 << 32) |
-          (@data[@pos + 5].to_i64 << 40) |
-          (@data[@pos + 6].to_i64 << 48) |
-          (@data[@pos + 7].to_i64 << 56)
-    @pos += 8
+    raise IndexError.new("not enough data") if @body_view.size < 8
+    val = @body_view[0].to_i64 | 
+          (@body_view[1].to_i64 << 8) |
+          (@body_view[2].to_i64 << 16) |
+          (@body_view[3].to_i64 << 24) |
+          (@body_view[4].to_i64 << 32) |
+          (@body_view[5].to_i64 << 40) |
+          (@body_view[6].to_i64 << 48) |
+          (@body_view[7].to_i64 << 56)
+    @body_view = @body_view[8..]
     val
   end
 
   def read_u64 : UInt64
-    raise IndexError.new("not enough data") if @pos + 8 > @data.size
-    val = @data[@pos].to_u64 | 
-          (@data[@pos + 1].to_u64 << 8) |
-          (@data[@pos + 2].to_u64 << 16) |
-          (@data[@pos + 3].to_u64 << 24) |
-          (@data[@pos + 4].to_u64 << 32) |
-          (@data[@pos + 5].to_u64 << 40) |
-          (@data[@pos + 6].to_u64 << 48) |
-          (@data[@pos + 7].to_u64 << 56)
-    @pos += 8
+    raise IndexError.new("not enough data") if @body_view.size < 8
+    val = @body_view[0].to_u64 | 
+          (@body_view[1].to_u64 << 8) |
+          (@body_view[2].to_u64 << 16) |
+          (@body_view[3].to_u64 << 24) |
+          (@body_view[4].to_u64 << 32) |
+          (@body_view[5].to_u64 << 40) |
+          (@body_view[6].to_u64 << 48) |
+          (@body_view[7].to_u64 << 56)
+    @body_view = @body_view[8..]
     val
   end
 
   def read_f32 : Float32
-    raise IndexError.new("not enough data") if @pos + 4 > @data.size
-
-    val = IO::Memory.new(@data[@pos, 4]).read_bytes(Float32, IO::ByteFormat::LittleEndian)
-    @pos += 4
+    raise IndexError.new("not enough data") if @body_view.size < 4
+    val = IO::Memory.new(@body_view[0, 4]).read_bytes(Float32, IO::ByteFormat::LittleEndian)
+    @body_view = @body_view[4..]
     val
   end
 
   def read_f64 : Float64
-    raise IndexError.new("not enough data") if @pos + 8 > @data.size
-
-    val = IO::Memory.new(@data[@pos, 8]).read_bytes(Float64, IO::ByteFormat::LittleEndian)
-    @pos += 8
+    raise IndexError.new("not enough data") if @body_view.size < 8
+    val = IO::Memory.new(@body_view[0, 8]).read_bytes(Float64, IO::ByteFormat::LittleEndian)
+    @body_view = @body_view[8..]
     val
   end
 
@@ -191,24 +194,58 @@ class BanchoPacketReader
       shift += 7
     end
 
-    str_bytes = read_bytes(len)
+    str_bytes = @body_view[0, len]
+    @body_view = @body_view[len..]
     String.new(str_bytes)
   end
 
-  def read_raw : Bytes
-    read_bytes(@curr_len)
-  end
+  # TODO: handle osu's
+end
 
-  def reset
-    @pos = 0
-    @curr_len = 0
-  end
+# reader packet handler 
 
-  def position
-    @pos
-  end
-
-  def has_more?
-    @pos < @data.size
+class PongPacket < BasePacket
+  def handle(p : Player)
+    # nah
   end
 end
+
+class UserStatsRequestPacket < BasePacket
+  def handle(p : Player)
+    # TODO: check 
+    p.enqueue(Packets.user_stats(p))
+  end
+end
+
+class LogoutPacket < BasePacket
+  def handle(p : Player)
+    if Time.utc.to_unix_f - p.login_time.to_unix_f < 1.0
+      return
+    end
+
+    p.enqueue(Packets.logout(p.id))
+  end
+end
+
+class ReceiveUpdatesPacket < BasePacket
+  def handle(p : Player)
+    if Time.utc.to_unix_f - p.login_time.to_unix_f < 1.0
+      return
+    end
+
+    p.enqueue(Packets.logout(p.id))
+  end
+end
+
+class UserPresenceRequestPacket < BasePacket
+  def handle(p : Player)
+    # for now
+    p.enqueue(Packets.user_presence(p))
+  end
+end
+
+# register them client packets
+register(ClientPackets::LOGOUT, LogoutPacket)
+register(ClientPackets::PONG, PongPacket)
+register(ClientPackets::USER_STATS, UserStatsRequestPacket)
+register(ClientPackets::USER_PRESENCE_REQUEST, UserPresenceRequestPacket)

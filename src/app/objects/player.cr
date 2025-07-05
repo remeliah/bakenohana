@@ -5,6 +5,7 @@ class Player
   getter token : String
   getter username : String
   getter ip : String
+  getter login_time : Time
 
   property id : Int32
   property restricted = false
@@ -16,12 +17,16 @@ class Player
 
   @queue = IO::Memory.new
 
-  def initialize(@username : String, @token : String, @ip : String)
+  def initialize(
+    @username : String, 
+    @token : String,
+    @ip : String,
+    @login_time : Time
+  )
     @id = 3_i32 # TODO: lol
   end
 
   def enqueue(data : Bytes)
-    puts "enqueuing packet of size #{data.size}"
     @queue.write data
   end
 

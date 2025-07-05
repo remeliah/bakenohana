@@ -11,8 +11,6 @@ targets:
 dependencies:
   kemal:
     github: kemalcr/kemal
-  mysql:
-    github: crystal-lang/crystal-mysql
   dotenv:
     github: drum445/dotenv
 

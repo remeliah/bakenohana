@@ -59,27 +59,36 @@ post "/" do |env|
       body_bytes = body_content.gets_to_end.to_slice
       login_data = parse_login(body_bytes)
 
+      # TODO: proper validation
       if login_data.username.empty? || login_data.password_md5.size != 32
         env.response.headers["cho-token"] = "no"
-        env.response.output.write Packets.notification("invalid login") +
-                                  Packets.login_reply(-1)
-        env.response.flush
+        res = Packets.notification("invalid login") + Packets.login_reply(-1)
+        env.response.content_length = res.bytesize
+
+        env.response.write(res)
         next
       end
 
       if login_data.username == "loopen"
         env.response.headers["cho-token"] = "no"
-        env.response.output.write Packets.notification("kill yourself") +
-                                  Packets.login_reply(-1)
-        env.response.flush
+        res = Packets.notification("kill yourself") + Packets.login_reply(-1)
+        env.response.content_length = res.bytesize
+
+        env.response.write(res)
         next
       end
 
       osu_token = Random::Secure.hex(16)
-      player = Player.new(login_data.username, osu_token, ip)
+      login_time = Time.utc
+
+      player = Player.new(
+        login_data.username, 
+        osu_token, 
+        ip,
+        login_time
+      )
       PlayerSession.add(osu_token, player)
 
-      env.response.headers["cho-token"] = osu_token
       io = IO::Memory.new
       io.write Packets.login_reply(player.id)
       io.write Packets.protocol_version(19) # TODO: ?????
@@ -99,26 +108,33 @@ post "/" do |env|
       puts "sending login packets (#{packets.size} bytes)"
       puts "response hex: #{packets.hexstring}"
 
-      env.response.output.write packets
-      env.response.flush
+      env.response.headers["cho-token"] = osu_token
+      env.response.content_length = packets.bytesize
+      env.response.status_code = 200
+
+      puts env.response.headers
+
+      env.response.write(packets)
       next
 
     rescue ex 
       puts "[login err] #{ex.message}"
       puts ex.backtrace.join("\n")
-
+      
+      error_response = Packets.notification("bad login packet") + Packets.restart_server(0)
+      
       env.response.headers["cho-token"] = "invalid"
-      env.response.output.write Packets.notification("bad login packet") +
-                                Packets.restart_server(0)
-      env.response.output.flush
+      env.response.content_length = error_response.bytesize
+      env.response.status_code = 500
+
+      env.response.write(error_response)
       next
     end
   end
 
   player = PlayerSession.get(token)
   if player.nil?
-    env.response.output.write Packets.notification("server restart") +
-                              Packets.restart_server(0)
+    Packets.notification("server restart") + Packets.restart_server(0)
     next
   end
 
@@ -129,22 +145,13 @@ post "/" do |env|
   
   body = body_content.gets_to_end.to_slice
 
-  packet_map = {
-    4_u16 => ->(p : Player, body : Bytes) {
-      p.enqueue(Packets.pong)
-    },
-    85_u16 => ->(p : Player, body : Bytes) {
-      p.enqueue(Packets.user_stats(p))
-    }
-  }
-
-  BanchoPacketReader.new(body, packet_map).each do |pkt|
-    pkt.handle(player)
+  BanchoPacketReader.new(body, PACKET_MAP).each do |packet|
+    packet.handle(player)
   end
 
   player.last_recv_time = Time.utc
-  env.response.output.write player.dequeue
-  env.response.flush
+
+  env.response.write(player.dequeue)
 end
 
 get "/" do |env|
