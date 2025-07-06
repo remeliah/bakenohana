@@ -88,6 +88,21 @@ post "/" do |env|
         next
       end
 
+      login_time = Time.utc
+
+      if player = PlayerSession.get(username: login_data.username)
+        if (login_time.to_unix - player.last_recv_time.to_unix) < 10
+          env.response.headers["cho-token"] = "no"
+          env.response.write(
+            Packets.notification("user already logged in!") +
+            Packets.login_reply(LoginResponse::AUTH_FAILED)
+          )
+          next
+        else
+          player.logout
+        end
+      end
+
       user_info = Auth.authenticate(
         login_data.username,
         login_data.password_md5
@@ -102,8 +117,6 @@ post "/" do |env|
       end
 
       osu_token = Random::Secure.hex(16)
-      login_time = Time.utc
-
       player = Player.new( # TODO: add more 
         user_info.id,
         user_info.name,
