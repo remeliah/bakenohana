@@ -78,6 +78,7 @@ describe Packets do
     bytes = Packets.write(ServerPacket::PROTOCOL_VERSION, {str, OsuType::String})
 
     expected = IO::Memory.new
+    expected.write_byte 0x00
     expected.write_byte 0x0b
     expected.write_byte str.bytesize.to_u8
     expected.write str.to_slice
@@ -90,6 +91,7 @@ describe Packets do
     bytes = Packets.write(ServerPacket::CHANNEL_INFO_END, {list, OsuType::I32List})
 
     expected = IO::Memory.new
+    expected.write_byte 0x00
     expected.write_bytes list.size.to_u16, IO::ByteFormat::LittleEndian
     list.each { |i| expected.write_bytes i, IO::ByteFormat::LittleEndian }
 
@@ -107,6 +109,7 @@ describe Packets do
     bytes = Packets.write(ServerPacket::SEND_MESSAGE, {msg, OsuType::Message})
 
     expected = IO::Memory.new
+    expected.write_byte 0x00
     {"sender", "target", "content"}.each do |s|
       expected.write_byte 0x0b
       expected.write_byte s.bytesize.to_u8
