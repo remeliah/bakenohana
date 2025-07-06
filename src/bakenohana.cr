@@ -1,8 +1,12 @@
 require "kemal"
-require "./app/routes/bancho"
 require "dotenv"
 
+require "./app/routes/bancho"
+
+require "./app/state/services"
+
 Dotenv.load
+Services.init
 
 module Bakenohana
   VERSION = "0.1.0"

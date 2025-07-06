@@ -14,12 +14,14 @@ module PlayerSession
     end
   end
 
-  def self.get(*, token : String? = nil, id : Int32? = nil) : Player?
+  def self.get(*, token : String? = nil, id : Int32? = nil, username : String? = nil) : Player?
     @@mutex.synchronize do
       if token
         @@players[token]?
       elsif id
         @@players.values.find { |player| player.id == id }
+      elsif username
+        @@players.values.find { |player| player.username == username }
       else
         nil
       end

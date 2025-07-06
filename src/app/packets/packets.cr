@@ -1,4 +1,4 @@
-module Packets
+module Packets # thanks akatsuki
   enum ServerPacket : UInt16
     USER_ID = 5
     SEND_MESSAGE = 7

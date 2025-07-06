@@ -1,10 +1,18 @@
 require "kemal"
+require "crypto/bcrypt"
+
 require "../objects/player"
+
 require "../state/sessions"
+require "../state/auth"
+
 require "../packets/packets"
 require "../packets/reader"
+
 require "../models/login_data"
 require "../consts/priv"
+
+require "../repo/player"
 
 def parse_login(body : Bytes) : LoginData
   str = String.new(body)
@@ -62,37 +70,43 @@ post "/" do |env|
       # TODO: proper validation
       if login_data.username.empty? || login_data.password_md5.size != 32
         env.response.headers["cho-token"] = "no"
-        res = Packets.notification("invalid login") + Packets.login_reply(-1)
-        env.response.content_length = res.bytesize
-
-        env.response.write(res)
+        env.response.write(
+          Packets.notification("invalid login") + Packets.login_reply(-1)
+        )
         next
       end
 
       if login_data.username == "loopen"
         env.response.headers["cho-token"] = "no"
-        res = Packets.notification("kill yourself") + Packets.login_reply(-1)
-        env.response.content_length = res.bytesize
+        env.response.write(
+          Packets.notification("kill yourself") + Packets.login_reply(-1)
+        )
+        next
+      end
 
-        env.response.write(res)
+      user_info = Auth.authenticate(
+        login_data.username,
+        login_data.password_md5
+      )
+
+      unless user_info
+        env.response.headers["cho-token"] = "no"
+        env.response.write(
+          Packets.login_reply(-1)
+        )
         next
       end
 
       osu_token = Random::Secure.hex(16)
       login_time = Time.utc
-      
-      # TODO: fetch from db
-      priv = Privileges::UNRESTRICTED | 
-             Privileges::VERIFIED | 
-             Privileges::SUPPORTER
 
-      player = Player.new(
-        (login_data.username == "ano" ? 3 : 4),
-        login_data.username, 
+      player = Player.new( # TODO: add more 
+        user_info.id,
+        user_info.name,
         osu_token, 
         ip,
         login_time,
-        priv
+        Privileges.new(user_info.priv)
       )
       PlayerSession.add(osu_token, player)
 
@@ -131,14 +145,13 @@ post "/" do |env|
 
       packets = io.to_slice
 
-      puts "sending login packets (#{packets.size} bytes)"
-      puts "response hex: #{packets.hexstring}"
+      #puts "sending login packets (#{packets.size} bytes)"
+      #puts "response hex: #{packets.hexstring}"
 
       env.response.headers["cho-token"] = osu_token
-      env.response.content_length = packets.bytesize
       env.response.status_code = 200
 
-      puts env.response.headers
+      #puts env.response.headers
 
       env.response.write(packets)
       next
@@ -150,10 +163,11 @@ post "/" do |env|
       error_response = Packets.notification("bad login packet") + Packets.restart_server(0)
       
       env.response.headers["cho-token"] = "invalid"
-      env.response.content_length = error_response.bytesize
       env.response.status_code = 500
 
-      env.response.write(error_response)
+      env.response.write(
+        Packets.notification("bad login packet") + Packets.login_reply(-5)
+      )
       next
     end
   end

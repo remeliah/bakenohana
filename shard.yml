@@ -13,6 +13,10 @@ dependencies:
     github: kemalcr/kemal
   dotenv:
     github: drum445/dotenv
+  db:
+    github: crystal-lang/crystal-db
+  mysql:
+    github: crystal-lang/crystal-mysql
 
 crystal: '>= 1.16.3'
 
