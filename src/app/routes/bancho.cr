@@ -10,7 +10,9 @@ require "../packets/packets"
 require "../packets/reader"
 
 require "../models/login_data"
+
 require "../consts/priv"
+require "../consts/login_response"
 
 require "../repo/player"
 
@@ -71,7 +73,8 @@ post "/" do |env|
       if login_data.username.empty? || login_data.password_md5.size != 32
         env.response.headers["cho-token"] = "no"
         env.response.write(
-          Packets.notification("invalid login") + Packets.login_reply(-1)
+          Packets.notification("invalid login") + 
+          Packets.login_reply(LoginResponse::AUTH_FAILED)
         )
         next
       end
@@ -79,7 +82,8 @@ post "/" do |env|
       if login_data.username == "loopen"
         env.response.headers["cho-token"] = "no"
         env.response.write(
-          Packets.notification("kill yourself") + Packets.login_reply(-1)
+          Packets.notification("kill yourself") + 
+          Packets.login_reply(LoginResponse::BANNED)
         )
         next
       end
@@ -92,7 +96,7 @@ post "/" do |env|
       unless user_info
         env.response.headers["cho-token"] = "no"
         env.response.write(
-          Packets.login_reply(-1)
+          Packets.login_reply(LoginResponse::AUTH_FAILED)
         )
         next
       end
@@ -166,7 +170,8 @@ post "/" do |env|
       env.response.status_code = 500
 
       env.response.write(
-        Packets.notification("bad login packet") + Packets.login_reply(-5)
+        Packets.notification("bad login packet") + 
+        Packets.login_reply(LoginResponse::ERROR_OCCUR)
       )
       next
     end
