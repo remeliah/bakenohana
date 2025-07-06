@@ -87,6 +87,7 @@ post "/" do |env|
              Privileges::SUPPORTER
 
       player = Player.new(
+        (login_data.username == "ano" ? 3 : 4),
         login_data.username, 
         osu_token, 
         ip,
@@ -160,7 +161,7 @@ post "/" do |env|
   player = PlayerSession.get(token)
   if player.nil?
     env.response.write(
-      Packets.notification("server restart") + Packets.restart_server(0)
+      Packets.notification("server restarted") + Packets.restart_server(0)
     )
     next
   end

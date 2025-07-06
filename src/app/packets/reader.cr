@@ -234,23 +234,23 @@ end
 
 class LogoutPacket < BasePacket
   def handle(p : Player)
-    if Time.utc.to_unix_f - p.login_time.to_unix_f < 1.0
+    if Time.utc.to_unix - p.login_time.to_unix < 1
       return
     end
 
-    p.enqueue(Packets.logout(p.id))
+    p.logout
   end
 end
 
-class ReceiveUpdatesPacket < BasePacket
-  def handle(p : Player)
-    if Time.utc.to_unix_f - p.login_time.to_unix_f < 1.0
-      return
-    end
-
-    p.enqueue(Packets.logout(p.id))
-  end
-end
+#class ReceiveUpdatesPacket < BasePacket
+#  def handle(p : Player)
+#    if Time.utc.to_unix_f - p.login_time.to_unix_f < 1.0
+#      return
+#    end
+#
+#    p.enqueue(Packets.logout(p.id))
+#  end
+#end
 
 class UserPresenceRequestPacket < BasePacket
   getter user_ids : Array(Int32)
