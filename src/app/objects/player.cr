@@ -17,6 +17,8 @@ class Player
 
   property priv : Privileges
 
+  property friends : Set(Int32)
+
   @queue = IO::Memory.new
 
   def initialize(
@@ -28,6 +30,7 @@ class Player
   )
     @id = 3_i32 # TODO: lol
     @priv = priv
+    @friends = Set(Int32).new
   end
 
   def enqueue(data : Bytes)
@@ -52,5 +55,10 @@ class Player
 
   def restricted : Bool
     !@priv.includes?(Privileges::UNRESTRICTED)
+  end
+
+  def get_relationship : Nil
+    # TODO: actually get relationship lul
+    @friends.add(3)
   end
 end

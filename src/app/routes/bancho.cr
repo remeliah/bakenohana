@@ -124,7 +124,10 @@ post "/" do |env|
       end
 
       io.write Packets.channel_info_end()
-      
+  
+      player.get_relationship
+      io.write Packets.friends_list(player.friends)
+
       packets = io.to_slice
 
       puts "sending login packets (#{packets.size} bytes)"

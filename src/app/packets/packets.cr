@@ -26,6 +26,8 @@ module Packets
     Raw
   end
 
+  # packet writers
+
   def self.write(packet_id : ServerPacket, *args : Tuple) : Bytes
     ret = Bytes.new(3)
     ret[0] = (packet_id.value & 0xFF).to_u8
@@ -176,6 +178,8 @@ module Packets
     io.write_bytes count.to_u16, IO::ByteFormat::LittleEndian
   end
 
+  # now to write server packet
+
   def self.login_reply(user_id : Int32) : Bytes
     write(ServerPacket::USER_ID, {user_id, OsuType::I32})
   end
@@ -263,6 +267,10 @@ module Packets
       {player.status.latitude, OsuType::F32},
       {player.stats.global_rank, OsuType::I32}
     )
+  end
+
+  def self.friends_list(friends : Enumerable(Int32)) : Bytes
+    write(ServerPacket::FRIENDS_LIST, {friends.to_a, OsuType::I32List})
   end
 
   def self.restart_server(ms : Int32) : Bytes
