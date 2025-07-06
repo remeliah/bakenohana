@@ -7,6 +7,7 @@ module Packets
     USER_PRESENCE = 83
     USER_LOGOUT = 12
     NOTIFICATION = 24
+    CHANNEL_INFO = 65
     PRIVILEGES = 71
     FRIENDS_LIST = 72
     RESTART = 86
@@ -113,6 +114,9 @@ module Packets
       when OsuType::Message
         write_message payload_io, value.as?(Tuple(String, String, String, Int32)) || raise("expected message tuple")
 
+      when OsuType::Channel
+        write_channel payload_io, value.as?(Tuple(String, String, Int32)) || raise("expected channel tuple")
+
       else
         raise "unhandled OsuType: #{typ}"
       end
@@ -165,6 +169,13 @@ module Packets
     io.write_bytes sender_id, IO::ByteFormat::LittleEndian
   end
 
+  def self.write_channel(io : IO, channel : Tuple(String, String, Int32))
+    name, topic, count = channel
+    write_string(io, name)
+    write_string(io, topic)
+    io.write_bytes count.to_u16, IO::ByteFormat::LittleEndian
+  end
+
   def self.login_reply(user_id : Int32) : Bytes
     write(ServerPacket::USER_ID, {user_id, OsuType::I32})
   end
@@ -200,8 +211,15 @@ module Packets
     write(ServerPacket::ACCOUNT_RESTRICTED, {Bytes.empty, OsuType::Raw})
   end
 
-   def self.channel_info_end : Bytes
+  def self.channel_info_end : Bytes
     write(ServerPacket::CHANNEL_INFO_END, {Bytes.empty, OsuType::Raw})
+  end
+
+  def self.channel_info(name : String, topic : String, player_count : Int32) : Bytes
+    write(
+      ServerPacket::CHANNEL_INFO,
+      { {name, topic, player_count}, OsuType::Channel }
+    )
   end
 
   def self.user_stats(player : Player) : Bytes
@@ -240,7 +258,7 @@ module Packets
       {player.username, OsuType::String},
       {(player.status.utc_offset + 24).to_u8, OsuType::U8},
       {player.status.country_code.to_u8, OsuType::U8},
-      {(player.status.priv | (player.status.mode << 5)).to_u8, OsuType::U8},
+      {(player.client_priv.value | (player.status.mode << 5)).to_u8, OsuType::U8},
       {player.status.longitude, OsuType::F32},
       {player.status.latitude, OsuType::F32},
       {player.stats.global_rank, OsuType::I32}

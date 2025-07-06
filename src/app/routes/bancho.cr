@@ -80,26 +80,48 @@ post "/" do |env|
 
       osu_token = Random::Secure.hex(16)
       login_time = Time.utc
+      
+      # TODO: fetch from db
+      priv = Privileges::UNRESTRICTED | 
+             Privileges::VERIFIED | 
+             Privileges::SUPPORTER
 
       player = Player.new(
         login_data.username, 
         osu_token, 
         ip,
-        login_time
+        login_time,
+        priv
       )
       PlayerSession.add(osu_token, player)
 
       io = IO::Memory.new
       io.write Packets.login_reply(player.id)
       io.write Packets.protocol_version(19) # TODO: ?????
-      # TODO: use player.status.priv?
-      priv = Privileges::UNRESTRICTED | Privileges::VERIFIED | Privileges::SUPPORTER
-      io.write Packets.bancho_privileges(priv.to_i32)
+
+      io.write Packets.bancho_privileges(
+        (player.client_priv | ClientPrivileges::SUPPORTER).value
+      )
 
       io.write Packets.notification("yo #{player.username}")
 
-      io.write Packets.user_presence(player)
-      io.write Packets.user_stats(player)
+      user_data = (
+        Packets.user_presence(player) + Packets.user_stats(player)
+      )
+      io.write user_data
+
+      if !player.restricted # TODO: handle restricted
+        PlayerSession.each do |p|
+          # enqueue us to them
+          p.enqueue(user_data)
+
+          # enqueue them to us
+          unless p.restricted
+            io.write Packets.user_presence(p)
+            io.write Packets.user_stats(p)
+          end
+        end
+      end
 
       io.write Packets.channel_info_end()
       
@@ -134,7 +156,9 @@ post "/" do |env|
 
   player = PlayerSession.get(token)
   if player.nil?
-    Packets.notification("server restart") + Packets.restart_server(0)
+    env.response.write(
+      Packets.notification("server restart") + Packets.restart_server(0)
+    )
     next
   end
 

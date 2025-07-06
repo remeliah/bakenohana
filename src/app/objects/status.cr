@@ -1,4 +1,4 @@
-struct PlayerStatus
+struct PlayerStatus # maybe soon i will remove this and put it on player object
   property action : UInt8 = 0
   property info_text : String = ""
 
@@ -12,6 +12,5 @@ struct PlayerStatus
   property longitude : Float32 = 0
   property country_code : Int32 = 0
 
-  property priv : Int32 = 0
   property utc_offset : Int32 = 0
 end

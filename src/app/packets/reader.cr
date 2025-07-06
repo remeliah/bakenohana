@@ -211,9 +211,24 @@ class PongPacket < BasePacket
 end
 
 class UserStatsRequestPacket < BasePacket
+  getter user_ids : Array(Int32)
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @user_ids = reader.read_i32_list_i16l
+  end
+
   def handle(p : Player)
-    # TODO: check 
-    p.enqueue(Packets.user_stats(p))
+    unrestricted_ids = PlayerSession.unrestricted.map(&.id).to_set
+    is_online = ->(id : Int32) { unrestricted_ids.includes?(id) && id != p.id }
+
+    @user_ids.select(&is_online).each do |online_id|
+      target = PlayerSession.get(id: online_id)
+      next unless target
+
+      packet = Packets.user_stats(target)
+      p.enqueue(packet)
+    end
   end
 end
 
@@ -238,9 +253,21 @@ class ReceiveUpdatesPacket < BasePacket
 end
 
 class UserPresenceRequestPacket < BasePacket
+  getter user_ids : Array(Int32)
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @user_ids = reader.read_i32_list_i16l
+  end
+
   def handle(p : Player)
-    # for now
-    p.enqueue(Packets.user_presence(p))
+    @user_ids.each do |id|
+      target = PlayerSession.get(id: id)
+      next unless target
+
+      packet = Packets.user_presence(target)
+      p.enqueue(packet)
+    end
   end
 end
 
