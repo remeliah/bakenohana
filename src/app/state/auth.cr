@@ -1,4 +1,5 @@
 require "./services"
+require "crypto/bcrypt"
 
 module Auth
   @@cache = {} of String => User

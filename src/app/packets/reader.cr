@@ -10,6 +10,8 @@ enum ClientPackets : UInt16 # TODO: add more
   PONG = 4
   SEND_PRIVATE_MESSAGE = 25
   CHANNEL_JOIN = 63
+  FRIEND_ADD = 73
+  FRIEND_REMOVE = 74
   USER_STATS = 85
   USER_PRESENCE_REQUEST = 97
   USER_PRESENCE_REQUEST_ALL = 98
@@ -384,6 +386,46 @@ class JoinChannelPacket < BasePacket
   end
 end
 
+class RemoveFriendPacket < BasePacket
+  getter id : Int32
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @id = reader.read_i32
+  end
+
+  def handle(p : Player)
+    target = PlayerSession.get(id: id)
+
+    unless target
+      puts "#{p} tries to remove offline player: (#{id})"
+      return
+    end
+
+    p.remove_friend(target)
+  end
+end
+
+class AddFriendPacket < BasePacket
+  getter id : Int32
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @id = reader.read_i32
+  end
+
+  def handle(p : Player)
+    target = PlayerSession.get(id: id)
+
+    unless target
+      puts "#{p} tries to add offline player: (#{id})"
+      return
+    end
+
+    p.add_friend(target)
+  end
+end
+
 # register them client packets
 
 register(ClientPackets::LOGOUT, LogoutPacket)
@@ -395,3 +437,6 @@ register(ClientPackets::USER_PRESENCE_REQUEST, UserPresenceRequestPacket)
 register(ClientPackets::CHANNEL_JOIN, JoinChannelPacket)
 register(ClientPackets::SEND_PUBLIC_MESSAGE, SendMessagePublicPacket)
 register(ClientPackets::SEND_PRIVATE_MESSAGE, SendMessagePrivatePacket)
+
+register(ClientPackets::FRIEND_ADD, AddFriendPacket)
+register(ClientPackets::FRIEND_REMOVE, RemoveFriendPacket)

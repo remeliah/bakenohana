@@ -1,5 +1,4 @@
 require "kemal"
-require "crypto/bcrypt"
 
 require "../objects/player"
 

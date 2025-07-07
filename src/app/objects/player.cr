@@ -80,13 +80,59 @@ class Player
     !@priv.includes?(Privileges::UNRESTRICTED)
   end
 
-  def add_friend(user_id : Int32)
-    @friends_mut.synchronize { @friends.add(user_id) }
+  def add_friend(player : Player) : Nil
+    if @friends_mut.synchronize { @friends.includes?(player.id) }
+      puts "#{@username} tries to add #{player.username}, whos already their friend!"
+      return
+    end
+
+    @friends_mut.synchronize { @friends.add(player.id) }
+    
+    Services.db.execute(
+      "replace into relationships (user1, user2, type) values (?, ?, 'friend')",
+      @id, player.id
+    )
+    
+    puts "#{@username} friended #{player.username}."
+  end
+
+  def remove_friend(player : Player) : Nil
+    unless @friends_mut.synchronize { @friends.includes?(player.id) }
+      puts "#{@username} tries to unfriend #{player.username}, whos not their friend!"
+      return
+    end
+
+    @friends_mut.synchronize { @friends.delete(player.id) }
+    
+    Services.db.execute(
+      "delete from relationships where user1 = ? and user2 = ?",
+      @id, player.id
+    )
+    
+    puts "#{@username} unfriended #{player.username}."
   end
 
   def get_relationship : Nil
-    # TODO: actually get relationship lul
-    add_friend(3)
+    rows = Services.db.fetch_all( # TODO: store on repo?
+      "select user2, type from relationships where user1 = ?",
+      @id
+    )
+    
+    @friends_mut.synchronize do
+      @friends.clear
+      rows.each do |row|
+        user2_id = row["user2"].as(Int32)
+        relationship_type = row["type"].as(String)
+        
+        case relationship_type
+        when "friend"
+          @friends.add(user2_id)
+        when "block"
+          # TODO: Add blocks set and mutex
+          # @blocks.add(user2_id)
+        end
+      end
+    end
   end
 
   def logout
@@ -110,6 +156,8 @@ class Player
     
     puts "player #{@username} (#{@id}) logged out"
   end
+
+  # channel stuff
 
   def channels : Array(Channels)
     @channels_mut.synchronize { @channels.dup }
