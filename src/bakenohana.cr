@@ -1,13 +1,14 @@
 require "kemal"
 require "dotenv"
+Dotenv.load
 
 require "./app/routes/bancho"
+require "./app/routes/avatar"
 
 require "./app/state/services"
 require "./app/state/sessions"
 
 # TODO: move these
-Dotenv.load
 Services.init
 ChannelSession.prepare
 

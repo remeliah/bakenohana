@@ -5,3 +5,4 @@
 *.dwarf
 .env
 shard.lock
+.data/

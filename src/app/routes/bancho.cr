@@ -54,6 +54,8 @@ def parse_login(body : Bytes) : LoginData
   )
 end
 
+# c.ppy.sh
+
 post "/" do |env|
   ip = env.request.remote_address.to_s
   token = env.request.headers["osu-token"]?

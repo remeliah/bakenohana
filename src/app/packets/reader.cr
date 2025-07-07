@@ -417,7 +417,7 @@ class AddFriendPacket < BasePacket
   def handle(p : Player)
     target = PlayerSession.get(id: id)
 
-    unless target
+    unless target # should i check for adding themself? rofl
       puts "#{p} tries to add offline player: (#{id})"
       return
     end
