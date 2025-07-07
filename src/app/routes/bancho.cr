@@ -150,8 +150,13 @@ post "/" do |env|
 
           # enqueue them to us
           unless p.restricted
-            io.write Packets.user_presence(p)
-            io.write Packets.user_stats(p)
+            if p == PlayerSession.bot
+              io.write Packets.bot_presence(p)
+              io.write Packets.bot_stats(p)
+            else
+              io.write Packets.user_presence(p)
+              io.write Packets.user_stats(p)
+            end
           end
         end
       end
@@ -193,8 +198,6 @@ post "/" do |env|
     rescue ex 
       puts "[login err] #{ex.message}"
       puts ex.backtrace.join("\n")
-      
-      error_response = Packets.notification("bad login packet") + Packets.restart_server(0)
       
       env.response.headers["cho-token"] = "invalid"
       env.response.status_code = 500

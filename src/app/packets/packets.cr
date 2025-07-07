@@ -270,6 +270,25 @@ module Packets # thanks akatsuki
     )
   end
 
+  def self.bot_stats(player : Player) : Bytes
+    write(
+      ServerPacket::USER_STATS,
+      {1, OsuType::I32},
+      {6_u8, OsuType::U8},
+      {"you", OsuType::String},
+      {"", OsuType::String},
+      {0, OsuType::I32},
+      {0_u8, OsuType::U8},
+      {0, OsuType::I32},
+      {0_i64, OsuType::I64},
+      {(67_f32 / 100.0_f32), OsuType::F32},
+      {67, OsuType::I32},
+      {0_i64, OsuType::I64},
+      {0, OsuType::I32},
+      {67_u16, OsuType::U16}
+    )
+  end
+
   def self.user_presence(player : Player) : Bytes
     write(
       ServerPacket::USER_PRESENCE,
@@ -281,6 +300,20 @@ module Packets # thanks akatsuki
       {player.status.longitude, OsuType::F32},
       {player.status.latitude, OsuType::F32},
       {player.stats.global_rank, OsuType::I32}
+    )
+  end
+
+  def self.bot_presence(player : Player) : Bytes
+    write(
+      ServerPacket::USER_PRESENCE,
+      {1, OsuType::I32},
+      {player.username, OsuType::String},
+      {(-24 + 24).to_u8, OsuType::U8},
+      {1_u8, OsuType::U8},
+      {(1 << 4 | (0 << 5)).to_u8, OsuType::U8},
+      {1_f32, OsuType::F32},
+      {1_f32, OsuType::F32},
+      {0, OsuType::I32}
     )
   end
 

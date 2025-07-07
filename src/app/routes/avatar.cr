@@ -1,4 +1,5 @@
 require "file_utils"
+require "../utils"
 
 AVATARS_PATH = Path.new(Dir.current) / ENV["AVA_PATH"]
 DEFAULT_AVATAR = AVATARS_PATH / "default.jpg"
@@ -27,7 +28,7 @@ get "/:user_id" do |env|
   ["jpg", "jpeg", "png"].each do |extension| # TODO: gifs
     avatar_path = AVATARS_PATH / "#{user_id_int}.#{extension}"
     if File.exists?(avatar_path)
-      send_file env, avatar_path.to_s, _get_type(extension)
+      send_file env, avatar_path.to_s, get_image_type(extension)
       break
     end
   end
@@ -37,19 +38,6 @@ get "/:user_id" do |env|
   else
     env.response.status_code = 404
     "default avatar not found"
-  end
-end
-
-def _get_type(extension : String) : String
-  case extension.downcase
-  when "jpg", "jpeg"
-    "image/jpeg"
-  when "png"
-    "image/png"
-  when "ico"
-    "image/ico"
-  else
-    "application/octet-stream"
   end
 end
 

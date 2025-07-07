@@ -6,10 +6,14 @@ enum Privileges : Int32 # TODO: add more
 
   SUPPORTER       = 1 << 4
 
-  NOMINATOR       = 1 << 11
-  MODERATOR       = 1 << 12
-  ADMINISTRATOR   = 1 << 13
-  DEVELOPER       = 1 << 14
+  NOMINATOR       = 1 << 5
+  MODERATOR       = 1 << 6
+  ADMINISTRATOR   = 1 << 7
+
+  PEPPY           = 1 << 8
+  DEVELOPER       = 1 << 9
+
+  BOAT            = UNRESTRICTED | MODERATOR | ADMINISTRATOR | DEVELOPER
 end
 
 @[Flags]
@@ -19,6 +23,6 @@ enum ClientPrivileges : Int32 # TODO: add more
   MODERATOR     = 1 << 1
   SUPPORTER     = 1 << 2
 
-  OWNER         = 1 << 3
+  PEPPY         = 1 << 3
   DEVELOPER     = 1 << 4
 end

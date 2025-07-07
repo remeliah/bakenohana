@@ -251,7 +251,12 @@ class UserStatsRequestPacket < BasePacket
       target = PlayerSession.get(id: online_id)
       next unless target
 
-      packet = Packets.user_stats(target)
+      if target == PlayerSession.bot
+        packet = Packets.bot_stats(target)
+      else
+        packet = Packets.user_stats(target)
+      end
+
       p.enqueue(packet)
     end
   end
@@ -290,7 +295,12 @@ class UserPresenceRequestPacket < BasePacket
       target = PlayerSession.get(id: id)
       next unless target
 
-      packet = Packets.user_presence(target)
+      if target == PlayerSession.bot
+        packet = Packets.user_presence(target)
+      else
+        packet = Packets.user_presence(target)
+      end
+
       p.enqueue(packet)
     end
   end

@@ -2,6 +2,14 @@ require "../objects/channel"
 
 module PlayerSession
   @@players = Hash(String, Player).new
+  @@bot : Player = Player.new( # TODO: use db
+    id: 1,
+    username: "boat",
+    token: "_bot",
+    ip: "0",
+    login_time: Time.utc,
+    priv: Privileges::BOAT
+  )
   @@mutex = Mutex.new
 
   def self.add(token : String, p : Player)
@@ -21,13 +29,19 @@ module PlayerSession
       if token
         @@players[token]?
       elsif id
+        return @@bot if id == 1
         @@players.values.find { |player| player.id == id }
       elsif username
+        return @@bot if username == "boat" # trolage
         @@players.values.find { |player| player.username == username }
       else
         nil
       end
     end
+  end
+
+  def self.bot : Player
+    @@bot
   end
 
   def self.players : Hash(String, Player)
@@ -41,6 +55,7 @@ module PlayerSession
   end
 
   def self.each(&block : Player, String ->)
+    yield @@bot, @@bot.token
     # HACK: to avoid holding lock during iter
     players_ = @@mutex.synchronize { @@players.dup }
     players_.each do |token, player|
