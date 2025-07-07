@@ -1,6 +1,9 @@
 require "./stats"
 require "./status"
+require "./channel"
+
 require "../consts/priv"
+require "../packets/packets"
 
 class Player
   getter token : String
@@ -19,6 +22,9 @@ class Player
 
   @friends = Set(Int32).new
   @friends_mut = Mutex.new
+
+  @channels = Array(Channels).new
+  @channels_mut = Mutex.new
 
   @queue = IO::Memory.new
   @queue_mut = Mutex.new
@@ -84,6 +90,12 @@ class Player
   end
 
   def logout
+    while !@channels_mut.synchronize { @channels.empty? }
+      first_channel = @channels_mut.synchronize { @channels.first? }
+      break unless first_channel
+      leave_channel(first_channel, kick: false)
+    end
+
     PlayerSession.remove(@token)
 
     logout_packet = Packets.logout(@id)
@@ -97,5 +109,89 @@ class Player
     end
     
     puts "player #{@username} (#{@id}) logged out"
+  end
+
+  def channels : Array(Channels)
+    @channels_mut.synchronize { @channels.dup }
+  end
+
+  def add_channel(channel : Channels)
+    @channels_mut.synchronize do
+      @channels << channel unless @channels.includes?(channel)
+    end
+  end
+
+  def remove_channel(channel : Channels)
+    @channels_mut.synchronize do
+      @channels.delete(channel)
+    end
+  end
+
+  def join_channel(channel : Channels) : Bool
+    if channel.includes?(self) || 
+      !channel.can_read?(@priv)
+      return false
+    end
+
+    channel.append(self)
+
+    add_channel(channel)
+
+    enqueue(Packets.channel_join(channel.name))
+
+    chan_info_packet = Packets.channel_info(channel.name, channel.topic, channel.player_count)
+    
+    if channel.instance
+      channel.players.each do |p|
+        p.enqueue(chan_info_packet)
+      end
+    else
+      PlayerSession.each do |p, _|
+        if channel.can_read?(p.priv)
+          p.enqueue(chan_info_packet)
+        end
+      end
+    end
+    
+    true
+  end
+
+  def leave_channel(channel : Channels, kick : Bool = true) : Nil
+    return unless channel.includes?(self)
+
+    channel.remove(self)
+
+    remove_channel(channel)
+    
+    if kick
+      enqueue(Packets.channel_kick(channel.name))
+    end
+
+    chan_info_packet = Packets.channel_info(channel.name, channel.topic, channel.player_count)
+    
+    if channel.instance
+      channel.players.each do |p|
+        p.enqueue(chan_info_packet)
+      end
+    else
+      PlayerSession.each do |p, _|
+        if channel.can_read?(p.priv)
+          p.enqueue(chan_info_packet)
+        end
+      end
+    end
+  end
+
+  def send(msg : String, sender : Player, chan : Channel | Nil = nil) : Nil
+    target = chan.try(&.name) || @username
+
+    data = Packets.send_message(
+      sender.username,
+      msg,
+      target,
+      sender.id
+    )
+
+    enqueue(data)
   end
 end

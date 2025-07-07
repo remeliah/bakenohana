@@ -1,9 +1,15 @@
 require "../objects/player"
 require "./packets"
 
+require "../models/message"
+require "../models/channel"
+
 enum ClientPackets : UInt16 # TODO: add more
+  SEND_PUBLIC_MESSAGE = 1
   LOGOUT = 2
   PONG = 4
+  SEND_PRIVATE_MESSAGE = 25
+  CHANNEL_JOIN = 63
   USER_STATS = 85
   USER_PRESENCE_REQUEST = 97
   USER_PRESENCE_REQUEST_ALL = 98
@@ -200,6 +206,23 @@ class BanchoPacketReader
   end
 
   # TODO: handle osu's
+
+  def read_message : Message
+    Message.new(
+      read_string(), # sender
+      read_string(), # text
+      read_string(), # recipient
+      read_i32()     # sender_id
+    )
+  end
+
+  def read_channel : Chan
+    Chan.new(
+      read_string(), # name
+      read_string(), # topic
+      read_i32()     # players
+    )
+  end
 end
 
 # reader packet handler 
@@ -271,8 +294,104 @@ class UserPresenceRequestPacket < BasePacket
   end
 end
 
+class SendMessagePublicPacket < BasePacket
+  getter msg : Message
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @msg = reader.read_message
+  end
+
+  def handle(p : Player)
+    msg_text = @msg.text.strip
+    return if msg_text.empty?
+
+    recipient = @msg.recipient
+
+    t_chan = ChannelSession[recipient]
+
+    unless t_chan
+      puts "#{p} wrote to non-existent #{recipient}."
+      return
+    end
+
+    unless t_chan.can_write?(p.priv)
+      puts "#{p} wrote to #{recipient} with insufficient privileges."
+      return
+    end
+
+    if msg_text.size > 2000
+      msg_text = "#{msg_text[0, 2000]}... (truncated)"
+      p.enqueue(Packets.notification(
+        "Your message was truncated\n(exceeded 2000 characters)."
+      ))
+    end
+
+    t_chan.send(msg_text, sender: p)
+  end
+end
+
+class SendMessagePrivatePacket < BasePacket
+  getter msg : Message
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @msg = reader.read_message
+  end
+
+  def handle(p : Player)
+    msg_text = @msg.text.strip
+    return if msg_text.empty?
+
+    recipient = @msg.recipient
+
+    t_name = PlayerSession.get(username: recipient)
+
+    unless t_name
+      puts "#{p} wrote to non-existent #{recipient}."
+      return
+    end
+
+    if msg_text.size > 2000
+      msg_text = "#{msg_text[0, 2000]}... (truncated)"
+      p.enqueue(Packets.notification(
+        "Your message was truncated\n(exceeded 2000 characters)."
+      ))
+    end
+
+    t_name.send(msg_text, sender: p)
+  end
+end
+
+class JoinChannelPacket < BasePacket
+  getter name : String
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @name = reader.read_string
+  end
+
+  def handle(p : Player)
+    if ["#highlight", "#userlog"].includes?(name)
+      return
+    end
+
+    channel = ChannelSession[name]
+    if channel.nil? || !p.join_channel(channel)
+      puts "#{p} failed to join #{name}."
+      return
+    end
+  end
+end
+
 # register them client packets
+
 register(ClientPackets::LOGOUT, LogoutPacket)
 register(ClientPackets::PONG, PongPacket)
+
 register(ClientPackets::USER_STATS, UserStatsRequestPacket)
 register(ClientPackets::USER_PRESENCE_REQUEST, UserPresenceRequestPacket)
+
+register(ClientPackets::CHANNEL_JOIN, JoinChannelPacket)
+register(ClientPackets::SEND_PUBLIC_MESSAGE, SendMessagePublicPacket)
+register(ClientPackets::SEND_PRIVATE_MESSAGE, SendMessagePrivatePacket)

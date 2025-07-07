@@ -155,6 +155,22 @@ post "/" do |env|
         end
       end
 
+      ChannelSession.each do |c|
+        next if !c.auto_join || 
+                !c.can_read?(player.priv) || 
+                c.r_name == "#lobby"
+
+        chan_info_packet = Packets.channel_info(c.name, c.topic, c.player_count)
+
+        io.write chan_info_packet
+
+        PlayerSession.each do |o, _|
+          if c.can_read?(o.priv)
+            o.enqueue(chan_info_packet)
+          end
+        end
+      end
+
       io.write Packets.channel_info_end()
   
       player.get_relationship

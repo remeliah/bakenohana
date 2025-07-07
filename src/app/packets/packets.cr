@@ -7,7 +7,10 @@ module Packets # thanks akatsuki
     USER_PRESENCE = 83
     USER_LOGOUT = 12
     NOTIFICATION = 24
+    CHANNEL_JOIN = 64
     CHANNEL_INFO = 65
+    CHANNEL_KICK = 66
+    CHANNEL_AUTO_JOIN = 67
     PRIVILEGES = 71
     FRIENDS_LIST = 72
     RESTART = 86
@@ -223,6 +226,18 @@ module Packets # thanks akatsuki
     write(
       ServerPacket::CHANNEL_INFO,
       { {name, topic, player_count}, OsuType::Channel }
+    )
+  end
+
+  def self.channel_join(name : String) : Bytes
+    write(
+      ServerPacket::CHANNEL_JOIN, {name, OsuType::String}
+    )
+  end
+
+  def self.channel_kick(name : String) : Bytes
+    write(
+      ServerPacket::CHANNEL_KICK, {name, OsuType::String}
     )
   end
 

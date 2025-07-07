@@ -4,9 +4,12 @@ require "dotenv"
 require "./app/routes/bancho"
 
 require "./app/state/services"
+require "./app/state/sessions"
 
+# TODO: move these
 Dotenv.load
 Services.init
+ChannelSession.prepare
 
 module Bakenohana
   VERSION = "0.1.0"
