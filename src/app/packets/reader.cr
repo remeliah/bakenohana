@@ -339,7 +339,7 @@ class SendMessagePublicPacket < BasePacket
       ))
     end
 
-    t_chan.send(msg_text, sender: p)
+    t_chan.send_msg(msg_text, sender: p)
   end
 end
 
@@ -371,7 +371,7 @@ class SendMessagePrivatePacket < BasePacket
       ))
     end
 
-    t_name.send(msg_text, sender: p)
+    t_name.send_msg(msg_text, sender: p)
   end
 end
 

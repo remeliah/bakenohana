@@ -128,6 +128,11 @@ post "/" do |env|
       )
       PlayerSession.add(osu_token, player)
 
+      if !player.restricted && !player.priv.includes?(Privileges::VERIFIED)
+        # TODO: discord/email verify?
+        player.add_priv(Privileges::VERIFIED)
+      end
+
       io = IO::Memory.new
       io.write Packets.login_reply(player.id)
       io.write Packets.protocol_version(19) # TODO: ?????
@@ -159,6 +164,23 @@ post "/" do |env|
             end
           end
         end
+      else
+        PlayerSession.unrestricted.each do |p| # TODO: HOW IS THIS LOGIC WORK AGAIN I FORGOTT
+          # enqueue them to us
+          if p == PlayerSession.bot
+            io.write Packets.bot_presence(p)
+            io.write Packets.bot_stats(p)
+          else
+            io.write Packets.user_presence(p)
+            io.write Packets.user_stats(p)
+          end
+        end
+
+        io.write Packets.account_restricted()
+        player.send_msg( # notify the user
+          "yo bum ass is restricted",
+          PlayerSession.bot
+        )
       end
 
       ChannelSession.each do |c|
@@ -184,13 +206,10 @@ post "/" do |env|
 
       packets = io.to_slice
 
-      #puts "sending login packets (#{packets.size} bytes)"
-      #puts "response hex: #{packets.hexstring}"
-
+      elap = (Time.utc - login_time).total_milliseconds
+      rlog "#{player.username} (#{player.id}) logged in (#{elap.round(2)}ms)", Ansi::LCYAN
       env.response.headers["cho-token"] = osu_token
       env.response.status_code = 200
-
-      #puts env.response.headers
 
       env.response.write(packets)
       next

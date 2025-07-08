@@ -65,13 +65,17 @@ module PlayerSession
 
   def self.restricted : Set(Player)
     @@mutex.synchronize do
-      @@players.values.select(&.restricted).to_set
+      res = @@players.values.select(&.restricted).to_set
+      res.add(@@bot) # TODO: dont
+      res
     end
   end
 
   def self.unrestricted : Set(Player)
     @@mutex.synchronize do
-      @@players.values.reject(&.restricted).to_set
+      res = @@players.values.reject(&.restricted).to_set
+      res.add(@@bot)
+      res
     end
   end
 end

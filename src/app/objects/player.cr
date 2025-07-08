@@ -135,6 +135,24 @@ class Player
     end
   end
 
+  private def set_priv(priv : Privileges) : Nil
+    @priv = priv
+    Services.db.execute(
+      "update users set priv = ? where id = ?",
+      @priv.value, @id.to_s
+    )
+
+    rlog "updated #{@username} (#{@id}) priv to #{@priv.to_s}"
+  end
+
+  def add_priv(priv : Privileges) : Nil
+    set_priv(@priv | priv)
+  end
+
+  def rem_priv(priv : Privileges) : Nil
+    set_priv(@priv & ~priv)
+  end
+
   def logout
     while !@channels_mut.synchronize { @channels.empty? }
       first_channel = @channels_mut.synchronize { @channels.first? }
@@ -230,7 +248,7 @@ class Player
     end
   end
 
-  def send(msg : String, sender : Player, chan : Channel | Nil = nil) : Nil
+  def send_msg(msg : String, sender : Player, chan : Channel | Nil = nil) : Nil
     target = chan.try(&.name) || @username
 
     data = Packets.send_message(

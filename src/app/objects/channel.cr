@@ -53,7 +53,7 @@ class Channels
     (priv & @write_priv) != Privileges::None
   end
 
-  def send(msg : String, sender : Player, to_self : Bool = false) : Nil
+  def send_msg(msg : String, sender : Player, to_self : Bool = false) : Nil
     data = Packets.send_message(
       sender.username,
       msg,
@@ -73,7 +73,7 @@ class Channels
   def send_selective(msg : String, sender : Player, recipients : Set(Player)) : Nil
     recipients.each do |p|
       if includes?(p)
-        p.send(msg, sender: sender, chan: self)
+        p.send_msg(msg, sender: sender, chan: self)
       end
     end
   end
