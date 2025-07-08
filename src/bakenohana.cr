@@ -11,16 +11,25 @@ require "./app/routes/avatar"
 require "./app/state/services"
 require "./app/state/sessions"
 
+require "./app/init_router"
+
 # TODO: move these
 Services.init
 ChannelSession.prepare
 
 module Bakenohana
-  VERSION = "0.1.0"
+  # "Kemal is ready to lead at" sybau
+  Log.setup do |c|
+    c.bind "kemal", Log::Severity::None, Log::IOBackend.new(IO::Memory.new)
+  end
+  Kemal.config.logging = false
 
   if port_str = ENV["PORT"]?
     Kemal.config.port = port_str.to_i
   end
 
+  init_routes # this initialize middleware too!
+
+  rlog "hop on localhost:#{port_str}", Ansi::LBLUE
   Kemal.run
 end
