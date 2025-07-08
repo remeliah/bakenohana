@@ -323,12 +323,12 @@ class SendMessagePublicPacket < BasePacket
     t_chan = ChannelSession[recipient]
 
     unless t_chan
-      puts "#{p} wrote to non-existent #{recipient}."
+      rlog "#{p} wrote to non-existent #{recipient}.", Ansi::LYELLOW
       return
     end
 
     unless t_chan.can_write?(p.priv)
-      puts "#{p} wrote to #{recipient} with insufficient privileges."
+      rlog "#{p} wrote to #{recipient} with insufficient privileges.", Ansi::LYELLOW
       return
     end
 
@@ -360,7 +360,7 @@ class SendMessagePrivatePacket < BasePacket
     t_name = PlayerSession.get(username: recipient)
 
     unless t_name
-      puts "#{p} wrote to non-existent #{recipient}."
+      rlog "#{p} wrote to non-existent #{recipient}.", Ansi::LYELLOW
       return
     end
 
@@ -390,7 +390,7 @@ class JoinChannelPacket < BasePacket
 
     channel = ChannelSession[name]
     if channel.nil? || !p.join_channel(channel)
-      puts "#{p} failed to join #{name}."
+      rlog "#{p} failed to join #{name}.", Ansi::LYELLOW
       return
     end
   end
@@ -408,7 +408,7 @@ class RemoveFriendPacket < BasePacket
     target = PlayerSession.get(id: id)
 
     unless target
-      puts "#{p} tries to remove offline player: (#{id})"
+      rlog "#{p} tries to remove offline player: (#{id})", Ansi::LYELLOW
       return
     end
 
@@ -428,7 +428,7 @@ class AddFriendPacket < BasePacket
     target = PlayerSession.get(id: id)
 
     unless target # should i check for adding themself? rofl
-      puts "#{p} tries to add offline player: (#{id})"
+      rlog "#{p} tries to add offline player: (#{id})", Ansi::LYELLOW
       return
     end
 

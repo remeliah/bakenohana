@@ -184,7 +184,7 @@ module ChannelSession
   end
 
   def self.prepare : Nil
-    puts "fetching channels from sql."
+    rlog "fetching channels from sql.", Ansi::LCYAN
     
     channels_data = Services.db.fetch_all("select * from channels")
     
@@ -201,6 +201,6 @@ module ChannelSession
       append(channel)
     end
     
-    puts "loaded #{size} channels from database."
+    rlog "loaded #{size} channels from database.", Ansi::LGREEN
   end
 end

@@ -2,6 +2,9 @@ require "kemal"
 require "dotenv"
 Dotenv.load
 
+require "./app/config" # load early since im not calling this everytime
+require "./app/log"
+
 require "./app/routes/bancho"
 require "./app/routes/avatar"
 
@@ -19,6 +22,5 @@ module Bakenohana
     Kemal.config.port = port_str.to_i
   end
 
-  puts "hop on"
   Kemal.run
 end

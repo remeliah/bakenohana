@@ -19,7 +19,7 @@ def parse_login(body : Bytes) : LoginData
   str = String.new(body)
   lines = str.split('\n', remove_empty: true)
 
-  puts lines
+  rlog lines
 
   raise "login: not 3 lines" unless lines.size == 3
 
@@ -196,8 +196,8 @@ post "/" do |env|
       next
 
     rescue ex 
-      puts "[login err] #{ex.message}"
-      puts ex.backtrace.join("\n")
+      rlog "[login err] #{ex.message}", Ansi::LRED
+      rlog ex.backtrace.join("\n"), Ansi::LRED
       
       env.response.headers["cho-token"] = "invalid"
       env.response.status_code = 500

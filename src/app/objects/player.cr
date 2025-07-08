@@ -82,7 +82,7 @@ class Player
 
   def add_friend(player : Player) : Nil
     if @friends_mut.synchronize { @friends.includes?(player.id) }
-      puts "#{@username} tries to add #{player.username}, whos already their friend!"
+      rlog "#{@username} tries to add #{player.username}, whos already their friend!", Ansi::LYELLOW
       return
     end
 
@@ -93,12 +93,12 @@ class Player
       @id, player.id
     )
     
-    puts "#{@username} friended #{player.username}."
+    rlog "#{@username} friended #{player.username}."
   end
 
   def remove_friend(player : Player) : Nil
     unless @friends_mut.synchronize { @friends.includes?(player.id) }
-      puts "#{@username} tries to unfriend #{player.username}, whos not their friend!"
+      rlog "#{@username} tries to unfriend #{player.username}, whos not their friend!", Ansi::LYELLOW
       return
     end
 
@@ -109,7 +109,7 @@ class Player
       @id, player.id
     )
     
-    puts "#{@username} unfriended #{player.username}."
+    rlog "#{@username} unfriended #{player.username}."
   end
 
   def get_relationship : Nil
@@ -154,7 +154,7 @@ class Player
       @queue = IO::Memory.new
     end
     
-    puts "player #{@username} (#{@id}) logged out"
+    rlog "#{@username} (#{@id}) logged out"
   end
 
   # channel stuff
