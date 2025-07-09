@@ -4,6 +4,8 @@ require "./channel"
 
 require "../consts/priv"
 require "../packets/packets"
+require "../repo/relationship"
+require "../repo/user"
 
 class Player
   getter token : String
@@ -90,11 +92,8 @@ class Player
     end
 
     @friends_mut.synchronize { @friends.add(player.id) }
-    
-    Services.db.execute(
-      "replace into relationships (user1, user2, type) values (?, ?, 'friend')",
-      @id, player.id
-    )
+
+    RelationshipRepo.create(@id, player.id)
     
     rlog "#{@username} friended #{player.username}."
   end
@@ -107,29 +106,20 @@ class Player
 
     @friends_mut.synchronize { @friends.delete(player.id) }
     
-    Services.db.execute(
-      "delete from relationships where user1 = ? and user2 = ?",
-      @id, player.id
-    )
+    RelationshipRepo.delete(@id, player.id)
     
     rlog "#{@username} unfriended #{player.username}."
   end
 
   def get_relationship : Nil
-    rows = Services.db.fetch_all( # TODO: store on repo?
-      "select user2, type from relationships where user1 = ?",
-      @id
-    )
+    relation = RelationshipRepo.fetch_all_for(@id)
     
     @friends_mut.synchronize do
       @friends.clear
-      rows.each do |row|
-        user2_id = row["user2"].as(Int32)
-        relationship_type = row["type"].as(String)
-        
-        case relationship_type
+      relation.each do |rel|
+        case rel.type
         when "friend"
-          @friends.add(user2_id)
+          @friends.add(rel.user2)
         when "block"
           # TODO: Add blocks set and mutex
           # @blocks.add(user2_id)
@@ -140,9 +130,9 @@ class Player
 
   private def set_priv(priv : Privileges) : Nil
     @priv = priv
-    Services.db.execute(
-      "update users set priv = ? where id = ?",
-      @priv.value, @id.to_s
+    UserRepo.update(
+      id: @id,
+      priv: @priv.value
     )
 
     rlog "updated #{@username} (#{@id}) priv to #{@priv.to_s}"

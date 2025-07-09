@@ -1,4 +1,5 @@
 require "../objects/channel"
+require "../repo/channel"
 
 module PlayerSession
   @@players = Hash(String, Player).new
@@ -190,15 +191,15 @@ module ChannelSession
   def self.prepare : Nil
     rlog "fetching channels from sql.", Ansi::LCYAN
     
-    channels_data = Services.db.fetch_all("select * from channels")
+    channels_data = ChanRepo.fetch_all
     
     channels_data.each do |row|
       channel = Channels.new(
-        name: row["name"].as(String),
-        topic: row["topic"].as(String),
-        read_priv: Privileges.new(row["read_priv"].as(Int32)),
-        write_priv: Privileges.new(row["write_priv"].as(Int32)),
-        auto_join: row["auto_join"].as(Int32) == 1,
+        name: row.name,
+        topic: row.topic,
+        read_priv: Privileges.new(row.read_priv),
+        write_priv: Privileges.new(row.write_priv),
+        auto_join: row.auto_join,
         instance: false
       )
       

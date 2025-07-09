@@ -13,8 +13,6 @@ require "../models/login_data"
 require "../consts/priv"
 require "../consts/login_response"
 
-require "../repo/player"
-
 module Cho
   def self.parse_login(body : Bytes) : LoginData
     str = String.new(body)
@@ -170,8 +168,9 @@ module Cho
               end
             end
           else
-            PlayerSession.unrestricted.each do |p| # TODO: HOW IS THIS LOGIC WORK AGAIN I FORGOTT
-              # enqueue them to us
+            PlayerSession.unrestricted.each do |p|
+              # enqueue unrestricted players to us
+              # we won't enqueue our user_data to them
               if p == PlayerSession.bot
                 io.write Packets.bot_presence(p)
                 io.write Packets.bot_stats(p)
@@ -213,9 +212,9 @@ module Cho
 
           elap = (Time.utc - login_time).total_milliseconds
           rlog "#{player.username} (#{player.id}) logged in (#{elap.round(2)}ms)", Ansi::LCYAN
+
           env.response.headers["cho-token"] = osu_token
           env.response.status_code = 200
-
           env.response.write(packets)
           next
 
@@ -225,7 +224,6 @@ module Cho
           
           env.response.headers["cho-token"] = "invalid"
           env.response.status_code = 500
-
           env.response.write(
             Packets.notification("bad login packet") + 
             Packets.login_reply(LoginResponse::ERROR_OCCUR)

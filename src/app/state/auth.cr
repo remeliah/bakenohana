@@ -1,9 +1,9 @@
-require "./services"
+require "../repo/user"
 require "crypto/bcrypt"
 
 module Auth
-  def self.authenticate(username : String, untrusted_password : String) : User?
-    user = Services.db.fetch_one_as(User, "select * from users where name = ?", username)
+  def self.authenticate(username : String, untrusted_password : String) : UserRepo?
+    user = UserRepo.fetch_one(username)
     return nil unless user
 
     parsed = Crypto::Bcrypt::Password.new(user.pw_bcrypt)
