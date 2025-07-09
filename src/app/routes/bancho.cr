@@ -61,6 +61,10 @@ module Cho
       ip = env.request.remote_address.to_s
       token = env.request.headers["osu-token"]?
 
+      if env.request.headers["User-Agent"]? != "osu!"
+        next env.response.status_code = 403
+      end
+
       if token.nil?
         begin
           body_content = env.request.body
