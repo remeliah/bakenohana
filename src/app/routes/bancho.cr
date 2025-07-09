@@ -249,8 +249,14 @@ module Cho
       
       body = body_content.gets_to_end.to_slice
 
-      BanchoPacketReader.new(body, PACKET_MAP).each do |packet|
-        packet.handle(player)
+      begin
+        BanchoPacketReader.new(body, PACKET_MAP).each do |packet|
+          packet.handle(player)
+        end
+      rescue ex
+        rlog "[packet] #{ex.message}", Ansi::LRED
+        rlog ex.backtrace.join("\n"), Ansi::LRED
+        next env.response.write(player.dequeue)
       end
 
       player.last_recv_time = Time.utc

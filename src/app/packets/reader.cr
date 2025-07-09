@@ -5,9 +5,15 @@ require "../models/message"
 require "../models/channel"
 
 enum ClientPackets : UInt16 # TODO: add more
+  ACTION = 0
   SEND_PUBLIC_MESSAGE = 1
   LOGOUT = 2
   PONG = 4
+  START_SPECTATING = 16
+  STOP_SPECTATING = 17
+  SPECTATE_FRAMES = 18
+  ERROR_REPORT = 20
+  CANT_SPECTATE = 21
   SEND_PRIVATE_MESSAGE = 25
   CHANNEL_JOIN = 63
   FRIEND_ADD = 73
@@ -320,15 +326,26 @@ class SendMessagePublicPacket < BasePacket
 
     recipient = @msg.recipient
 
-    t_chan = ChannelSession[recipient]
+    if recipient == "#spectator"
+      spectated_id = p.spectating.try(&.id) || p.id
+      recp = "#spec_#{spectated_id}"
+      t_chan = ChannelSession[recp]
 
-    unless t_chan
-      rlog "#{p} wrote to non-existent #{recipient}.", Ansi::LYELLOW
-      return
+      unless t_chan
+        rlog "#{p.username} wrote to non-existent spectate channel?", Ansi::LYELLOW
+        return
+      end
+    else
+      t_chan = ChannelSession[recipient]
+
+      unless t_chan
+        rlog "#{p.username} wrote to non-existent #{recipient}.", Ansi::LYELLOW
+        return
+      end
     end
 
     unless t_chan.can_write?(p.priv)
-      rlog "#{p} wrote to #{recipient} with insufficient privileges.", Ansi::LYELLOW
+      rlog "#{p.username} wrote to #{recipient} with insufficient privileges.", Ansi::LYELLOW
       return
     end
 
@@ -360,7 +377,7 @@ class SendMessagePrivatePacket < BasePacket
     t_name = PlayerSession.get(username: recipient)
 
     unless t_name
-      rlog "#{p} wrote to non-existent #{recipient}.", Ansi::LYELLOW
+      rlog "#{p.username} wrote to non-existent #{recipient}.", Ansi::LYELLOW
       return
     end
 
@@ -390,7 +407,7 @@ class JoinChannelPacket < BasePacket
 
     channel = ChannelSession[name]
     if channel.nil? || !p.join_channel(channel)
-      rlog "#{p} failed to join #{name}.", Ansi::LYELLOW
+      rlog "#{p.username} failed to join #{name}.", Ansi::LYELLOW
       return
     end
   end
@@ -408,7 +425,7 @@ class RemoveFriendPacket < BasePacket
     target = PlayerSession.get(id: id)
 
     unless target
-      rlog "#{p} tries to remove offline player: (#{id})", Ansi::LYELLOW
+      rlog "#{p.username} tries to remove offline player: (#{id})", Ansi::LYELLOW
       return
     end
 
@@ -428,11 +445,122 @@ class AddFriendPacket < BasePacket
     target = PlayerSession.get(id: id)
 
     unless target # should i check for adding themself? rofl
-      rlog "#{p} tries to add offline player: (#{id})", Ansi::LYELLOW
+      rlog "#{p.username} tries to add offline player: (#{id})", Ansi::LYELLOW
       return
     end
 
     p.add_friend(target)
+  end
+end
+
+class StartSpectatingPacket < BasePacket
+  getter id : Int32
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @id = reader.read_i32
+  end
+
+  def handle(p : Player) : Nil
+    target = PlayerSession.get(id: id)
+    unless target
+      rlog "#{p.username} tried to spectate non-existent id #{id}", Ansi::LYELLOW
+      return
+    end
+
+    if host = p.spectating
+      if host == target
+        target.enqueue(Packets.spectator_joined(p.id))
+        f_joined = Packets.f_spectator_joined(p.id)
+
+        target.spectators.each do |spec|
+          next if spec == p
+          spec.enqueue(f_joined)
+        end
+
+        return
+      end
+
+      host.remove_spectator(p)
+    end
+
+    target.add_spectator(p)
+  end
+end
+
+class StopSpectatingPacket < BasePacket
+  def handle(p : Player)
+    p.spectating.try &.remove_spectator(p)
+  end
+end
+
+class SpectateFramesPacket < BasePacket
+  @frames : Bytes
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+    @frames = reader.read_raw
+  end
+
+  def handle(p : Player) : Nil 
+    # NOTE: this might be really slow, i might wanna optimize this a little bit
+    frames_packet = Packets.spectator_frames(@frames)
+
+    p.spectators.each do |spec|
+      spec.enqueue(frames_packet)
+    end
+  end
+end
+
+class CantSpectatePacket < BasePacket
+  def handle(p : Player) : Nil
+    host = p.spectating
+    unless host
+      rlog "#{p.username} sent can't spectate while not spectating?", Ansi::LRED
+      return
+    end
+
+    data = Packets.spectator_cant_spectate(p.id)
+    host.enqueue(data)
+
+    host.spectators.each do |t|
+      t.enqueue(data)
+    end
+  end
+end
+
+class ChangeActionPacket < BasePacket
+  getter action : UInt8
+  getter info_text : String
+  getter map_md5 : String
+  getter mods : UInt32
+  getter mode : UInt8
+  getter map_id : Int32
+
+  def initialize(reader : BanchoPacketReader)
+    super(reader)
+  
+    @action = reader.read_u8()
+    @info_text = reader.read_string()
+    @map_md5 = reader.read_string()
+
+    @mods = reader.read_u32()
+    @mode = reader.read_u8()
+
+    @map_id = reader.read_i32()
+  end
+
+  def handle(p : Player) : Nil
+    p.status.action = @action
+    p.status.info_text = @info_text
+    p.status.map_md5 = @map_md5
+    p.status.mods = @mods
+    p.status.mode = @mode
+    p.status.map_id = @map_id
+
+    unless p.restricted
+      p.enqueue(Packets.user_stats(p))
+    end
   end
 end
 
@@ -443,6 +571,7 @@ register(ClientPackets::PONG, PongPacket)
 
 register(ClientPackets::USER_STATS, UserStatsRequestPacket)
 register(ClientPackets::USER_PRESENCE_REQUEST, UserPresenceRequestPacket)
+register(ClientPackets::ACTION, ChangeActionPacket)
 
 register(ClientPackets::CHANNEL_JOIN, JoinChannelPacket)
 register(ClientPackets::SEND_PUBLIC_MESSAGE, SendMessagePublicPacket)
@@ -450,3 +579,8 @@ register(ClientPackets::SEND_PRIVATE_MESSAGE, SendMessagePrivatePacket)
 
 register(ClientPackets::FRIEND_ADD, AddFriendPacket)
 register(ClientPackets::FRIEND_REMOVE, RemoveFriendPacket)
+
+register(ClientPackets::START_SPECTATING, StartSpectatingPacket)
+register(ClientPackets::STOP_SPECTATING, StopSpectatingPacket)
+register(ClientPackets::SPECTATE_FRAMES, SpectateFramesPacket)
+register(ClientPackets::CANT_SPECTATE, CantSpectatePacket)

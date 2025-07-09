@@ -16,8 +16,8 @@ class Channels
   def initialize(
     name : String,
     @topic : String,
-    @read_priv : Privileges = Privileges::NORMAL,
-    @write_priv : Privileges = Privileges::NORMAL,
+    @read_priv : Privileges = Privileges::VERIFIED,
+    @write_priv : Privileges = Privileges::VERIFIED,
     @auto_join : Bool = true,
     @instance : Bool = false
   )

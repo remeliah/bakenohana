@@ -119,4 +119,34 @@ describe Packets do
 
     bytes[6..].should eq expected.to_slice
   end
+
+  # methods
+
+  it "writes spectator_cant_spectate" do
+    bytes = Packets.spectator_cant_spectate(0)
+
+    expected = IO::Memory.new
+
+    expected.write_byte 0x16
+    expected.write_byte 0x00
+    expected.write_byte 0x00
+
+    expected.write_bytes 4_u32, IO::ByteFormat::LittleEndian
+
+    expected.write_bytes 0_i32, IO::ByteFormat::LittleEndian
+
+    bytes.should eq expected.to_slice
+  end
+
+  it "writes channel_kick" do
+    bytes = Packets.channel_kick("#spectator")
+
+    expected = IO::Memory.new
+    expected.write_byte 0x00
+    expected.write_byte 0x0b
+    expected.write_byte "#spectator".bytesize.to_u8
+    expected.write "#spectator".to_slice
+
+    bytes[6..].should eq expected.to_slice
+  end
 end

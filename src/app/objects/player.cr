@@ -26,6 +26,9 @@ class Player
   @channels = Array(Channels).new
   @channels_mut = Mutex.new
 
+  property spectators : Array(Player) = [] of Player
+  property spectating : Player? = nil
+
   @queue = IO::Memory.new
   @queue_mut = Mutex.new
 
@@ -259,5 +262,71 @@ class Player
     )
 
     enqueue(data)
+  end
+
+  # spectating shit
+
+  def add_spectator(player : Player) : Nil
+    chan_name = "#spec_#{@id}"
+
+    spec_chan = ChannelSession.get_by_name(chan_name)
+    unless spec_chan
+      spec_chan = Channels.new(
+        name: chan_name,
+        topic: "#{@username}'s spectator channel.",
+        auto_join: false,
+        instance: true
+      )
+
+      join_channel(spec_chan)
+      ChannelSession.append(spec_chan)
+    end
+
+    unless player.join_channel(spec_chan)
+      rlog "#{@username} failed to join #{spec_chan}?", Ansi::LYELLOW
+      return
+    end
+
+    player_joined = Packets.f_spectator_joined(player.id)
+    @spectators.each do |spectator|
+      spectator.enqueue(player_joined)
+      player.enqueue(Packets.f_spectator_joined(spectator.id))
+    end
+    enqueue(Packets.spectator_joined(player.id))
+
+    @spectators << player
+    player.spectating = self
+
+    rlog "#{player.username} is now spectating #{@username}"
+  end
+
+  def remove_spectator(player : Player) : Nil
+    @spectators.delete(player)
+    player.spectating = nil
+
+    channel = ChannelSession.get_by_name("#spec_#{@id}")
+    raise "missing channel?" unless channel
+
+    player.leave_channel(channel)
+
+    if @spectators.empty?
+      leave_channel(channel)
+    else
+      channel_info = Packets.channel_info(
+        channel.name,
+        channel.topic,
+        channel.player_count
+      )
+
+      fellow = Packets.f_spectator_left(player.id)
+      enqueue(channel_info)
+
+      @spectators.each do |spectator|
+        spectator.enqueue(fellow + channel_info)
+      end
+    end
+
+    enqueue(Packets.spectator_left(player.id))
+    rlog "#{player.username} is no longer spectating #{@username}"
   end
 end

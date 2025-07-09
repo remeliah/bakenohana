@@ -6,7 +6,14 @@ module Packets # thanks akatsuki
     USER_STATS = 11
     USER_PRESENCE = 83
     USER_LOGOUT = 12
+    SPECTATOR_JOINED = 13
+    SPECTATOR_LEFT = 14
+    SPECTATE_FRAMES = 15
+    VERSION_UPDATE = 19
+    SPECTATOR_CANT_SPECTATE = 22
     NOTIFICATION = 24
+    FELLOW_SPECTATOR_JOINED = 42
+    FELLOW_SPECTATOR_LEFT = 43
     CHANNEL_JOIN = 64
     CHANNEL_INFO = 65
     CHANNEL_KICK = 66
@@ -258,7 +265,7 @@ module Packets # thanks akatsuki
       {player.status.action, OsuType::U8},
       {player.status.info_text, OsuType::String},
       {player.status.map_md5, OsuType::String},
-      {player.status.mods, OsuType::I32},
+      {player.status.mods, OsuType::U32},
       {player.status.mode, OsuType::U8},
       {player.status.map_id, OsuType::I32},
       {rscore, OsuType::I64},
@@ -277,7 +284,7 @@ module Packets # thanks akatsuki
       {6_u8, OsuType::U8},
       {"you", OsuType::String},
       {"", OsuType::String},
-      {0, OsuType::I32},
+      {0_u32, OsuType::U32},
       {0_u8, OsuType::U8},
       {0, OsuType::I32},
       {0_i64, OsuType::I64},
@@ -322,6 +329,30 @@ module Packets # thanks akatsuki
   end
 
   def self.restart_server(ms : Int32) : Bytes
-      write(ServerPacket::RESTART, {ms, OsuType::I32})
+    write(ServerPacket::RESTART, {ms, OsuType::I32})
+  end
+
+  def self.spectator_joined(user_id : Int32) : Bytes
+    write(ServerPacket::SPECTATOR_JOINED, {user_id, OsuType::I32})
+  end
+
+  def self.spectator_left(user_id : Int32) : Bytes
+    write(ServerPacket::SPECTATOR_LEFT, {user_id, OsuType::I32})
+  end
+
+  def self.spectator_frames(frame : Bytes) : Bytes
+    write(ServerPacket::SPECTATE_FRAMES, {frame, OsuType::Raw})
+  end
+
+  def self.spectator_cant_spectate(user_id : Int32) : Bytes
+    write(ServerPacket::SPECTATOR_CANT_SPECTATE, {user_id, OsuType::I32})
+  end
+
+  def self.f_spectator_joined(user_id : Int32) : Bytes
+    write(ServerPacket::FELLOW_SPECTATOR_JOINED, {user_id, OsuType::I32})
+  end
+
+  def self.f_spectator_left(user_id : Int32) : Bytes
+    write(ServerPacket::FELLOW_SPECTATOR_LEFT, {user_id, OsuType::I32})
   end
 end
