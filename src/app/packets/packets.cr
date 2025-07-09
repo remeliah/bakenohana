@@ -317,7 +317,7 @@ module Packets # thanks akatsuki
       {player.username, OsuType::String},
       {(-24 + 24).to_u8, OsuType::U8},
       {1_u8, OsuType::U8},
-      {(1 << 4 | (0 << 5)).to_u8, OsuType::U8},
+      {(player.client_priv.value | (0 << 5)).to_u8, OsuType::U8},
       {1_f32, OsuType::F32},
       {1_f32, OsuType::F32},
       {0, OsuType::I32}

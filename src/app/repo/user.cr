@@ -50,8 +50,8 @@ struct UserRepo # ngl playing with gulag gives me a habit of making these
     Services.db.fetch_one(self, "select * from users where name = ?", name)
   end
 
-  def self.fetch_many : Array(self)
-    Services.db.fetch_many_as(self, "select * from users")
+  def self.fetch_all : Array(self)
+    Services.db.fetch_all(self, "select * from users")
   end
 
   def self.update(id : Int32, name : String? = nil, safe_name : String? = nil, priv : Int32? = nil,
