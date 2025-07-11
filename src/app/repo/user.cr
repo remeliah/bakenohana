@@ -1,4 +1,5 @@
 require "db"
+require "../consts/priv"
 
 struct UserRepo # ngl playing with gulag gives me a habit of making these
   include DB::Serializable
@@ -81,5 +82,18 @@ struct UserRepo # ngl playing with gulag gives me a habit of making these
 
     query = "update users set #{set_} where id = ?"
     Services.db.execute(query, values)
+  end
+
+  def self.create(name : String, email : String, pw_bcrypt : String, country : String) : self
+    safe_name = name.downcase.gsub(/\s+/, "_") # TODO: make new function?
+    curr_time = Time.utc.to_unix
+
+    Services.db.execute( # TODO: insert email
+      " insert into users (name, safe_name, pw_bcrypt, country, creation_time, latest_activity, priv)
+        values (?, ?, ?, ?, ?, ?, ?)  ",
+      name, safe_name, pw_bcrypt, country, curr_time, curr_time, Privileges::UNRESTRICTED.value # so no restrict lewl
+    )
+
+    fetch_one(name: name).not_nil!
   end
 end

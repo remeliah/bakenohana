@@ -31,11 +31,12 @@ struct UserHashRepo
     )
   end
 
-  def self.fetch_hw_conflict(column : String, value : String, user_id : Int32) : DB::Any?
-    Services.db.fetch_val(
-      "select user_id from users_hash where #{column} = ? and user_id != ?",
+  def self.has_hw_conflict?(column : String, value : String, user_id : Int32) : Bool
+    result = Services.db.fetch_val(
+      "select 1 from users_hash where #{column} = ? and user_id != ? limit 1",
       value, user_id
     )
+    !result.nil?
   end
 
   def self.fetch_all_for(user_id : Int32) : Array(self)

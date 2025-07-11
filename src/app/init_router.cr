@@ -2,6 +2,7 @@ require "./middleware"
 
 require "./routes/bancho"
 require "./routes/avatar"
+require "./routes/web"
 
 def init_routes
   # NOTE: root will be handled on frontend, maybe
@@ -12,7 +13,7 @@ def init_routes
   end
 
   Middleware.sub("a") { |r| Ava.register_routes(r) }
-  #Middleware.sub("osu") { |r| Osu.register_routes(r) }
+  Middleware.sub("osu") { |r| Web.register_routes(r) }
 
   Middleware.register_all
 end

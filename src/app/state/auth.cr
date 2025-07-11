@@ -38,7 +38,7 @@ module Auth
     checks.each do |col, val|
       next if col == "disk_serial_number" && val == "runningunderwine"
 
-      if UserHashRepo.fetch_hw_conflict(col, val, user_id)
+      if UserHashRepo.has_hw_conflict?(col, val, user_id)
         conf_found = true
       end
     end
