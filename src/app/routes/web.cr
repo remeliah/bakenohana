@@ -12,8 +12,11 @@ module Web
       email         = env.params.body["user[user_email]"]?
       pw_plaintext  = env.params.body["user[password]"]?
       check         = env.params.body["check"]?.try &.to_i || 0
-      forwarded_ip  = env.request.headers["X-Forwarded-For"]?
-      real_ip       = env.request.headers["X-Real-IP"]?
+      ip            = (
+        env.request.headers["X-Forwarded-For"]? || 
+        env.request.headers["X-Real-IP"]? || 
+        ""
+      )
 
       unless username && email && pw_plaintext
         env.response.status_code = 400
@@ -57,7 +60,6 @@ module Web
         pw_md5 = Digest::MD5.hexdigest(pw_plaintext)
         pw_bcrypt = Crypto::Bcrypt::Password.create(pw_md5)
 
-        ip = real_ip || forwarded_ip || ""
         if geo = Geoloc.fetch(ip)
           country_acr = geo.country_acr.to_s
         end
