@@ -157,7 +157,7 @@ module Cho
           )
           io.write user_data
 
-          if !player.restricted # TODO: handle restricted
+          if !player.restricted
             PlayerSession.each do |p|
               # enqueue us to them
               p.enqueue(user_data)

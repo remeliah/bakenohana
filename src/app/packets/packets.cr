@@ -266,7 +266,7 @@ module Packets # thanks akatsuki
       {player.status.info_text, OsuType::String},
       {player.status.map_md5, OsuType::String},
       {player.status.mods.to_u32, OsuType::U32},
-      {player.status.mode, OsuType::U8},
+      {player.status.mode.as_vn.to_u8, OsuType::U8},
       {player.status.map_id, OsuType::I32},
       {rscore, OsuType::I64},
       {(stats.acc.to_f32 / 100.0_f32), OsuType::F32},
@@ -303,7 +303,7 @@ module Packets # thanks akatsuki
       {player.username, OsuType::String},
       {(player.status.utc_offset + 24).to_u8, OsuType::U8},
       {player.status.country_code.to_u8, OsuType::U8},
-      {(player.client_priv.value | (player.status.mode << 5)).to_u8, OsuType::U8},
+      {(player.client_priv.value | (player.status.mode.as_vn << 5)).to_u8, OsuType::U8},
       {player.status.longitude, OsuType::F32},
       {player.status.latitude, OsuType::F32},
       {player.stats.global_rank, OsuType::I32}

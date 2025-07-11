@@ -28,3 +28,4 @@
  - https://github.com/crystal-lang/crystal-mysql/issues/62
  - made this outta straight boredom lul not sum super serious project, just me messin around on crystal n tryna have fun wit it.
  - if it break... das prolly why 
+ - to run: crystal run --release src/bakenohana.cr

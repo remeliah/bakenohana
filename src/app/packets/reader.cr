@@ -547,6 +547,20 @@ class ChangeActionPacket < BasePacket
     @mods = reader.read_u32()
     @mode = reader.read_u8()
 
+    if (@mods & Mods::RELAX.value) != 0
+      if @mode == 3
+        @mods &= ~Mods::RELAX.value
+      else
+        @mode = (@mode + 4).to_u8
+      end
+    elsif (@mods & Mods::AUTOPILOT.value) != 0
+      if @mode != 0
+        @mods &= ~Mods::AUTOPILOT.value
+      else
+        @mode = (@mode + 8).to_u8
+      end
+    end
+
     @map_id = reader.read_i32()
   end
 
@@ -555,7 +569,7 @@ class ChangeActionPacket < BasePacket
     p.status.info_text = @info_text
     p.status.map_md5 = @map_md5
     p.status.mods = Mods.new(@mods)
-    p.status.mode = @mode
+    p.status.mode = Gamemode.new(@mode)
     p.status.map_id = @map_id
 
     unless p.restricted
