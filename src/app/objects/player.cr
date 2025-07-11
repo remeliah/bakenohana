@@ -78,7 +78,12 @@ class Player
       @status.latitude = geo.latitude.to_f32
       @status.longitude = geo.longitude.to_f32
       @status.country_code = geo.country_num.to_i32
+      @status.country = geo.country_acr.to_s
     end
+  end
+
+  def update_offset(offset : Int32)
+    @status.utc_offset = offset
   end
 
   def client_priv : ClientPrivileges # TODO: cache?

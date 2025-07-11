@@ -134,6 +134,7 @@ module Cho
             Privileges.new(user_info.priv)
           )
           player.enrich_geo # TODO: spawn?
+          player.update_offset(login_data.utc_offset) # why am i updating this too late
           PlayerSession.add(osu_token, player)
 
           if !player.restricted && !player.priv.includes?(Privileges::VERIFIED)

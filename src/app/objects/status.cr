@@ -14,5 +14,7 @@ struct PlayerStatus # maybe soon i will remove this and put it on player object
   property longitude : Float32 = 0
   property country_code : Int32 = 0
 
+  property country : String = ""
+
   property utc_offset : Int32 = 0
 end
