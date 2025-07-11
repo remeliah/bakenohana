@@ -1,5 +1,3 @@
-require "kemal"
-
 require "../objects/player"
 
 require "../state/sessions"
