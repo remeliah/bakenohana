@@ -162,6 +162,10 @@ class Player
   end
 
   def logout
+    if h = @spectating
+      h.remove_spectator(self)
+    end
+
     while !@channels_mut.synchronize { @channels.empty? }
       first_channel = @channels_mut.synchronize { @channels.first? }
       break unless first_channel
