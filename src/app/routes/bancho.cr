@@ -77,25 +77,6 @@ module Cho
           body_bytes = body_content.gets_to_end.to_slice
           login_data = parse_login(body_bytes)
 
-          # TODO: proper validation
-          if login_data.username.empty? || login_data.password_md5.size != 32
-            env.response.headers["cho-token"] = "no"
-            env.response.write(
-              Packets.notification("invalid login") + 
-              Packets.login_reply(LoginResponse::AUTH_FAILED)
-            )
-            next
-          end
-
-          if login_data.username == "loopen"
-            env.response.headers["cho-token"] = "no"
-            env.response.write(
-              Packets.notification("kill yourself") + 
-              Packets.login_reply(LoginResponse::BANNED)
-            )
-            next
-          end
-
           login_time = Time.utc
 
           if player = PlayerSession.get(username: login_data.username)
@@ -122,6 +103,12 @@ module Cho
               Packets.login_reply(LoginResponse::AUTH_FAILED)
             )
             next
+          end
+
+          unless Auth.validate_adapters(user_info.id, login_data, ip)
+            # TODO: restrict or sum
+            # i havent created restrict method
+            # might wanna add reason
           end
 
           osu_token = Random::Secure.hex(16)
