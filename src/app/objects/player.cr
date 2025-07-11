@@ -7,6 +7,8 @@ require "../packets/packets"
 require "../repo/relationship"
 require "../repo/user"
 
+require "../state/geoloc"
+
 class Player
   getter token : String
   getter username : String
@@ -69,6 +71,14 @@ class Player
 
   def friends : Set(Int32)
     @friends_mut.synchronize { @friends.dup }
+  end
+
+  def enrich_geo
+    if geo = Geoloc.fetch(@ip)
+      @status.latitude = geo.latitude.to_f32
+      @status.longitude = geo.longitude.to_f32
+      @status.country_code = geo.country_num.to_i32
+    end
   end
 
   def client_priv : ClientPrivileges # TODO: cache?

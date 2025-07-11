@@ -43,6 +43,9 @@ module Middleware
 
         env.response.status_code = 404
         env.response.print("not found")
+      else
+        env.response.status_code = 404
+        env.response.print("not found")
       end
     end
 

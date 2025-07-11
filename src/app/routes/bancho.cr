@@ -56,7 +56,11 @@ module Cho
   # c.ppy.sh
   def self.register_routes(r : Kemal::RouteHandler)
     r.add_route "POST", "/" do |env|
-      ip = env.request.remote_address.to_s
+      ip = (
+        env.request.headers["CF-Connecting-IP"]? || 
+        env.request.headers["X-Forwarded-For"].split(',')[0]? ||
+        "" # failc ase
+      )
       token = env.request.headers["osu-token"]?
 
       if env.request.headers["User-Agent"]? != "osu!"
@@ -129,6 +133,7 @@ module Cho
             login_time,
             Privileges.new(user_info.priv)
           )
+          player.enrich_geo # TODO: spawn?
           PlayerSession.add(osu_token, player)
 
           if !player.restricted && !player.priv.includes?(Privileges::VERIFIED)
