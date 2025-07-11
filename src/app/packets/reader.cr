@@ -554,7 +554,7 @@ class ChangeActionPacket < BasePacket
     p.status.action = @action
     p.status.info_text = @info_text
     p.status.map_md5 = @map_md5
-    p.status.mods = @mods
+    p.status.mods = Mods.new(@mods)
     p.status.mode = @mode
     p.status.map_id = @map_id
 

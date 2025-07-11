@@ -1,3 +1,5 @@
+require "../consts/mods"
+
 struct PlayerStatus # maybe soon i will remove this and put it on player object
   property action : UInt8 = 0
   property info_text : String = ""
@@ -5,7 +7,7 @@ struct PlayerStatus # maybe soon i will remove this and put it on player object
   property map_md5 : String = ""
   property map_id : Int32 = 0
 
-  property mods : UInt32 = 0
+  property mods : Mods = Mods::NOMOD
   property mode : UInt8 = 0
 
   property latitude : Float32 = 0

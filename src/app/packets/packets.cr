@@ -265,7 +265,7 @@ module Packets # thanks akatsuki
       {player.status.action, OsuType::U8},
       {player.status.info_text, OsuType::String},
       {player.status.map_md5, OsuType::String},
-      {player.status.mods, OsuType::U32},
+      {player.status.mods.to_u32, OsuType::U32},
       {player.status.mode, OsuType::U8},
       {player.status.map_id, OsuType::I32},
       {rscore, OsuType::I64},
