@@ -23,7 +23,7 @@ module Web
         next "missing required params"
       end
 
-      errors = Hash(String, Array(String)).new
+      errors = Hash(String, Array(String)).new { |hash, key| hash[key] = [] of String }
 
       unless USERNAME_REGEX.matches?(username)
         errors["username"] << "must be 2-18 characters and use only space or underscore."
@@ -52,8 +52,13 @@ module Web
 
       if !errors.empty?
         env.response.status_code = 400
-        joined = errors.transform_values(&.join("\n"))
-        next joined.to_json
+        response = {
+          "form_error" => {
+            "user" => errors.transform_values { |messages| [messages.join("\n")] }
+          }
+        }
+
+        next response.to_json
       end
 
       if check == 0
