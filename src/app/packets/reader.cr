@@ -1,4 +1,6 @@
 require "../objects/player"
+require "../objects/commands"
+
 require "./packets"
 
 require "../models/message"
@@ -379,6 +381,10 @@ class SendMessagePrivatePacket < BasePacket
     unless t_name
       rlog "#{p.username} wrote to non-existent #{recipient}.", Ansi::LYELLOW
       return
+    end
+
+    if t_name == PlayerSession.bot && msg_text.starts_with?(Config.boat_prefix)
+      return CommandHandler.handle_command(p, msg_text)
     end
 
     if msg_text.size > 2000

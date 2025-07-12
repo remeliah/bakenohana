@@ -89,7 +89,6 @@ class Player
   def client_priv : ClientPrivileges # TODO: cache?
     ret = ClientPrivileges::None
     ret |= ClientPrivileges::PLAYER     if @priv & Privileges::UNRESTRICTED != 0
-    ret |= ClientPrivileges::SUPPORTER  if @priv & Privileges::SUPPORTER != 0
     ret |= ClientPrivileges::MODERATOR  if @priv & Privileges::MODERATOR != 0 || @priv & Privileges::ADMINISTRATOR != 0
     ret |= ClientPrivileges::DEVELOPER  if @priv & Privileges::DEVELOPER != 0
     ret |= ClientPrivileges::PEPPY      if @priv & Privileges::PEPPY != 0
