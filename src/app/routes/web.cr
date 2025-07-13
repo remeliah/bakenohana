@@ -83,5 +83,36 @@ module Web
 
       "ok"
     end
+
+    r.add_route "GET", "/web/bancho_connect.php" do |env|
+      ""
+    end
+
+    r.add_route "GET", "/web/lastfm.php" do |env|
+      # TODO: log flags
+      ""
+    end
+
+    r.add_route "GET", "/p/doyoureallywanttoaskpeppy" do |env|
+      # no i dont want to
+      ""
+    end
+
+    r.add_route "GET", "/web/maps/*" do |env|
+      env.redirect "https://osu.ppy.sh#{env.request.resource}", 301
+    end
+
+    r.add_route "GET", "/d/:mapset_id" do |env|
+      map_set_id = env.params.url["mapset_id"]?
+      raise "missing mapset_id" unless map_set_id
+
+      if no_video = map_set_id.ends_with?("n")
+        map_set_id = map_set_id[0...-1]
+      end
+
+      query_str = "#{map_set_id}?n=#{no_video ? 1 : 0}"
+
+      env.redirect "#{Config.map_api}/#{query_str}", 301
+    end
   end
 end

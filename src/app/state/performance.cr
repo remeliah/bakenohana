@@ -25,7 +25,7 @@ lib LibOsuPerformance
     accuracy : Float64,
     miss_count : UInt32,
     passed_objects : OptionU32,
-    lazer : UInt8
+    lazer : UInt8 # NOTE: lazer might be used after i finish stable
   ) : CalculatePerformanceResult
 end
 
@@ -65,7 +65,7 @@ class OsuPerformanceCalculator
         beatmap_bytes.to_unsafe,
         beatmap_bytes.size.to_u32,
         mode.value.to_u32,
-        mods,
+        mods.value.to_u32,
         max_combo,
         accuracy,
         miss_count,
